@@ -36,19 +36,20 @@ sbatch <<EOF
 #SBATCH --hint=nomultithread
 
 set -euo pipefail
+PROJECT_DIR="$PROJECT_DIR"
 module purge
 module load julia
 
-export JULIA_DEPOT_PATH="\$PROJECT_DIR/.julia_depot"
+export JULIA_DEPOT_PATH="$PROJECT_DIR/.julia_depot"
 export JULIA_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
-mkdir -p "\$JULIA_DEPOT_PATH"
+mkdir -p "$PROJECT_DIR/.julia_depot"
 
-julia --project="\$PROJECT_DIR" -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
+julia --project="$PROJECT_DIR" -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
 
-exec julia --project="\$PROJECT_DIR" "\$PROJECT_DIR/scripts/fit_model.jl" \
+exec julia --project="$PROJECT_DIR" "$PROJECT_DIR/scripts/fit_model.jl" \
   --config "$CONFIG_PATH" \
   --run-id "$RUN_ID"$EXTRA_ARGS_STR
 EOF
