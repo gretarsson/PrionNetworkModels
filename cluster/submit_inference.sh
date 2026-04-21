@@ -16,6 +16,10 @@ mkdir -p "$LOG_DIR"
 
 JOB_NAME="${RUN_ID}"
 EXTRA_ARGS=("$@")
+EXTRA_ARGS_STR=""
+if [[ ${#EXTRA_ARGS[@]} -gt 0 ]]; then
+  printf -v EXTRA_ARGS_STR ' %q' "${EXTRA_ARGS[@]}"
+fi
 
 sbatch <<EOF
 #!/usr/bin/env bash
@@ -46,6 +50,5 @@ julia --project="\$PROJECT_DIR" -e 'using Pkg; Pkg.instantiate(); Pkg.precompile
 
 exec julia --project="\$PROJECT_DIR" "\$PROJECT_DIR/scripts/fit_model.jl" \
   --config "$CONFIG_PATH" \
-  --run-id "$RUN_ID" \
-  "${EXTRA_ARGS[@]}"
+  --run-id "$RUN_ID"$EXTRA_ARGS_STR
 EOF
