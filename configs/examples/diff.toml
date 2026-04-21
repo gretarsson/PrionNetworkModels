@@ -1,0 +1,19 @@
+[model]
+name = "DIFF"
+transport = "retrograde"
+parameter_sharing = "independent"
+
+[data]
+network = "data/examples/network.csv"
+observations = "data/examples/observations.csv"
+
+[seeding]
+seed_indices = [1]
+infer_seed = true
+
+[inference]
+n_chains = 4
+target_acceptance = 0.65
+
+[holdout]
+strategy = "none"

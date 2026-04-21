@@ -1,0 +1,22 @@
+[model]
+name = "DIFF"
+transport = "retrograde"
+parameter_sharing = "independent"
+
+[data]
+network = "data/paper/striatum/network.csv"
+observations = "data/paper/striatum/observations.csv"
+
+[seeding]
+seed_indices = [74]
+infer_seed = true
+
+[inference]
+n_chains = 1
+target_acceptance = 0.65
+sampler = "NUTS"
+n_samples = 500
+n_warmup = 500
+
+[holdout]
+strategy = "none"

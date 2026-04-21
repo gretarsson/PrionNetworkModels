@@ -1,0 +1,14 @@
+runs/
+outputs/
+.DS_Store
+*.jlso
+*.jld2
+*.h5
+*.hdf5
+*.arrow
+*.feather
+*.log
+*.out
+*.err
+.vscode/
+.idea/
