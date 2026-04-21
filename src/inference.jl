@@ -3,25 +3,25 @@ function default_priors(model_name::AbstractString, N::Integer)
     if name == "DIFF"
         return (
             rho = truncated(Normal(0.2, 0.1), 0.0, Inf),
-            sigma = truncated(Normal(0.05, 0.03), 1e-4, Inf),
-            seed = truncated(Normal(0.4, 0.2), 0.0, Inf),
+            sigma = LogNormal(0, 1),
+            seed = truncated(Normal(0.0, 0.1), 0.0, Inf),
         )
     elseif name == "DIFF-R"
         return (
-            rho = truncated(Normal(0.1, 0.08), 0.0, Inf),
-            alpha = truncated(Normal(0.4, 0.2), 0.0, Inf),
-            beta = Normal(1.0, 0.5),
-            sigma = truncated(Normal(0.05, 0.03), 1e-4, Inf),
-            seed = truncated(Normal(0.4, 0.2), 0.0, Inf),
+            rho = truncated(Normal(0.0, 0.1), 0.0, Inf),
+            alpha = truncated(Normal(0.0, 0.1), 0.0, Inf),
+            beta = Normal(0.0, 1.0),
+            sigma = LogNormal(0, 1),
+            seed = truncated(Normal(0.0, 0.1), 0.0, Inf),
         )
     elseif name == "DIFF-RF"
         return (
-            rho = truncated(Normal(0.1, 0.08), 0.0, Inf),
-            alpha = truncated(Normal(0.4, 0.2), 0.0, Inf),
-            beta = Normal(1.0, 0.5),
-            gamma = truncated(Normal(0.05, 0.05), 0.0, Inf),
-            sigma = truncated(Normal(0.05, 0.03), 1e-4, Inf),
-            seed = truncated(Normal(0.4, 0.2), 0.0, Inf),
+            rho = truncated(Normal(0.0, 0.1), 0.0, Inf),
+            alpha = truncated(Normal(0.0, 0.1), 0.0, Inf),
+            beta = Normal(0.0, 1.0),
+            gamma = truncated(Normal(0.0, 0.1), 0.0, Inf),
+            sigma = LogNormal(0, 1),
+            seed = truncated(Normal(0.0, 0.1), 0.0, Inf),
         )
     else
         error("Unknown model name: $model_name")
