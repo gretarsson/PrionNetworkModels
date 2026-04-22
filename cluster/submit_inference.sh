@@ -47,8 +47,6 @@ export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 mkdir -p "$PROJECT_DIR/.julia_depot"
 
-julia --project="$PROJECT_DIR" -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
-
 exec julia --project="$PROJECT_DIR" "$PROJECT_DIR/scripts/fit_model.jl" \
   --config "$CONFIG_PATH" \
   --run-id "$RUN_ID"$EXTRA_ARGS_STR
