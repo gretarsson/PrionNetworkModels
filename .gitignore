@@ -1,5 +1,7 @@
 runs/
 outputs/
+.julia_depot/
+logs/
 .DS_Store
 *.jlso
 *.jld2
