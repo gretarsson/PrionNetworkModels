@@ -10,6 +10,7 @@ using LinearAlgebra
 using MCMCChains
 using Plots
 using Random
+using SciMLSensitivity
 using Statistics
 using Turing
 

@@ -17,6 +17,7 @@ target_acceptance = 0.65
 sampler = "NUTS"
 n_samples = 500
 n_warmup = 500
+mean_data = false
 
 [holdout]
 strategy = "none"

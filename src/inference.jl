@@ -28,20 +28,32 @@ function default_priors(model_name::AbstractString, N::Integer)
     end
 end
 
-function finite_observations(data::AbstractArray)
-    obs = observed_matrix(data)
-    rows = Int[]
-    cols = Int[]
-    vals = Float64[]
-    for j in axes(obs, 2), i in axes(obs, 1)
-        value = obs[i, j]
-        if isfinite(value)
-            push!(rows, i)
-            push!(cols, j)
-            push!(vals, value)
+function finite_observations(data::AbstractArray; mean_data::Bool=false, ignore_regions::Vector{Int}=Int[])
+    working = copy(data)
+    if !isempty(ignore_regions)
+        if ndims(working) == 2
+            working[ignore_regions, :] .= missing
+        else
+            working[ignore_regions, :, :] .= missing
         end
     end
-    return (rows = rows, cols = cols, values = vals, matrix = obs)
+
+    if mean_data || ndims(working) == 2
+        obs = observed_matrix(working)
+        mask = isfinite.(obs)
+        vals = Float64.(obs[mask])
+        return (values = vals, mask = mask, n_samples = 1, mean_data = true)
+    end
+
+    vec_data = vec(working)
+    nonmissing = findall(vec_data .!== missing)
+    vals = Float64.(vec_data[nonmissing])
+    return (
+        values = vals,
+        nonmissing = nonmissing,
+        n_samples = size(working, 3),
+        mean_data = false,
+    )
 end
 
 function parameter_names_for_model(model_name::AbstractString, N::Integer)
@@ -57,8 +69,7 @@ function parameter_names_for_model(model_name::AbstractString, N::Integer)
     end
 end
 
-@model function smoke_model(spec::RunSpec, L::AbstractMatrix{<:Real}, timepoints::Vector{Float64}, obs_rows::Vector{Int}, obs_cols::Vector{Int}, obs_vals::Vector{Float64})
-    N = size(L, 1)
+@model function smoke_model(spec::RunSpec, prob::ODEProblem, N::Integer, timepoints::Vector{Float64}, obs_vals::Vector{Float64}, obs_info)
     priors = default_priors(spec.model.name, N)
 
     if spec.model.name == "DIFF"
@@ -85,10 +96,25 @@ end
         error("Unsupported model in smoke_model: $(spec.model.name)")
     end
 
-    pred = simulate_trajectory(spec, Matrix{Float64}(L), ["r$(i)" for i in 1:N], timepoints, params; seed_value=seed)
-    for k in eachindex(obs_vals)
-        obs_vals[k] ~ Normal(pred[obs_rows[k], obs_cols[k]], sigma)
+    predicted = solve(
+        prob,
+        Tsit5();
+        u0 = initial_conditions_for_spec(spec, N; seed_value = seed),
+        p = collect(params),
+        saveat = timepoints,
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+        abstol = 1e-6,
+        reltol = 1e-3,
+        maxiters = 6000,
+    )
+    pred = Array(predicted)[1:N, :]
+    pred_vec = if obs_info.mean_data
+        vec(pred[obs_info.mask])
+    else
+        pred_rep = cat([pred for _ in 1:obs_info.n_samples]..., dims = 3)
+        vec(pred_rep)[obs_info.nonmissing]
     end
+    obs_vals ~ MvNormal(pred_vec, sigma^2 * I)
 end
 
 function posterior_summary_table(chain::Chains, names_order::Vector{String})
@@ -139,11 +165,18 @@ function write_posterior_hdf5(path::AbstractString, chain::Chains, spec::RunSpec
 end
 
 function fit_synthetic_smoke(spec::RunSpec, L::AbstractMatrix, pathology; n_samples::Int=200)
-    obs = finite_observations(pathology.data)
-    model = smoke_model(spec, Matrix{Float64}(L), Float64.(pathology.timepoints), obs.rows, obs.cols, obs.values)
+    ignore_regions = spec.inference.ignore_seed ? spec.seeding.seed_indices : Int[]
+    obs = finite_observations(
+        pathology.data;
+        mean_data = spec.inference.mean_data,
+        ignore_regions = ignore_regions,
+    )
+    N = size(L, 1)
+    prob = make_ode_problem(spec, Matrix{Float64}(L), ["r$(i)" for i in 1:N], pathology.timepoints)
+    model = smoke_model(spec, prob, N, Float64.(pathology.timepoints), obs.values, obs)
     sampler_name = uppercase(spec.inference.sampler)
     if sampler_name == "NUTS"
-        return sample(model, NUTS(spec.inference.n_warmup, spec.inference.target_acceptance), n_samples; progress=false)
+        return sample(model, NUTS(spec.inference.n_warmup, spec.inference.target_acceptance; adtype = AutoReverseDiff()), n_samples; progress=false)
     elseif sampler_name == "MH"
         return sample(model, MH(), n_samples; progress=false)
     else
