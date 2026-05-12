@@ -12,7 +12,13 @@ shift 2
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="$PROJECT_DIR/logs"
+MARKER_FILE="$PROJECT_DIR/.julia_depot/.prepared_prionnetworkmodels"
 mkdir -p "$LOG_DIR"
+
+if [[ ! -f "$MARKER_FILE" || "$MARKER_FILE" -ot "$PROJECT_DIR/Project.toml" || ( -f "$PROJECT_DIR/Manifest.toml" && "$MARKER_FILE" -ot "$PROJECT_DIR/Manifest.toml" ) ]]; then
+  echo "Preparing Julia environment before submission..."
+  "$PROJECT_DIR/cluster/prepare_julia_env.sh"
+fi
 
 JOB_NAME="${RUN_ID}"
 EXTRA_ARGS=("$@")

@@ -3,6 +3,8 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+"$PROJECT_DIR/cluster/prepare_julia_env.sh"
+
 declare -A CONFIGS
 CONFIGS["striatum_DIFF_RETRO"]="configs/paper/striatum_core.toml"
 CONFIGS["striatum_DIFF-R_RETRO"]="configs/paper/striatum_diff_r_core.toml"
