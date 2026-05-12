@@ -8,6 +8,18 @@ MARKER_FILE="$DEPOT_DIR/.prepared_prionnetworkmodels"
 export JULIA_DEPOT_PATH="$DEPOT_DIR"
 mkdir -p "$DEPOT_DIR"
 
+if ! command -v julia >/dev/null 2>&1; then
+  if command -v module >/dev/null 2>&1; then
+    module purge
+    module load julia
+  fi
+fi
+
+if ! command -v julia >/dev/null 2>&1; then
+  echo "Could not find julia on PATH while preparing the project environment."
+  exit 1
+fi
+
 needs_prepare=false
 if [[ ! -f "$MARKER_FILE" ]]; then
   needs_prepare=true
