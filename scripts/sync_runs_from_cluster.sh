@@ -4,7 +4,7 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCAL_RUNS_DIR="${LOCAL_RUNS_DIR:-$PROJECT_DIR/runs}"
 
-REMOTE_HOST="${REMOTE_HOST:-alexanderc@cubic-login1}"
+REMOTE_HOST="${REMOTE_HOST:-alexanderc@cubic-login.uphs.upenn.edu}"
 REMOTE_PROJECT_DIR="${REMOTE_PROJECT_DIR:-~/PrionNetworkModels}"
 REMOTE_RUNS_DIR="${REMOTE_RUNS_DIR:-$REMOTE_PROJECT_DIR/runs}"
 
