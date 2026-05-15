@@ -247,7 +247,7 @@ That submits four single-chain jobs for each of:
 - `DIFF-R`
 - `DIFF-RF`
 
-To sync all finished run folders back from the cluster to your local machine:
+To sync all finished run folders and cluster logs back from the cluster to your local machine:
 
 ```bash
 /Users/gretarsson/Desktop/PrionNetworkModels/scripts/sync_runs_from_cluster.sh
@@ -260,6 +260,7 @@ By default, that script pulls from:
 and syncs into:
 
 - `/Users/gretarsson/Desktop/PrionNetworkModels/runs/`
+- `/Users/gretarsson/Desktop/PrionNetworkModels/logs/`
 
 You can override the remote host or project path without editing the script, for example:
 
