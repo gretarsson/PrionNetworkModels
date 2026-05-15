@@ -45,6 +45,7 @@ set -euo pipefail
 PROJECT_DIR="$PROJECT_DIR"
 module purge
 module load julia
+ulimit -t unlimited
 
 export JULIA_DEPOT_PATH="$PROJECT_DIR/.julia_depot"
 export JULIA_NUM_THREADS=1
