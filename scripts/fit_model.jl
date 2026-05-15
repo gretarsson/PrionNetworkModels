@@ -20,6 +20,7 @@ function main()
     run_id = get_arg("--run-id", nothing)
     n_samples_arg = get_arg("--samples", nothing)
     n_warmup_arg = get_arg("--warmup", nothing)
+    show_progress = has_flag("--progress")
 
     spec = load_run_spec(config_path)
     spec = resolve_data_paths(spec, config_path)
@@ -43,7 +44,7 @@ function main()
         )
     end
 
-    paths = fit_and_save_run(spec; run_root=joinpath(dirname(@__DIR__), "runs"), run_id=run_id)
+    paths = fit_and_save_run(spec; run_root=joinpath(dirname(@__DIR__), "runs"), run_id=run_id, progress=show_progress)
     println(paths.run_dir)
 end
 

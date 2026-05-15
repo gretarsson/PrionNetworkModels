@@ -164,7 +164,7 @@ function write_posterior_hdf5(path::AbstractString, chain::Chains, spec::RunSpec
     return path
 end
 
-function fit_synthetic_smoke(spec::RunSpec, L::AbstractMatrix, pathology; n_samples::Int=200)
+function fit_synthetic_smoke(spec::RunSpec, L::AbstractMatrix, pathology; n_samples::Int=200, progress::Bool=false)
     ignore_regions = spec.inference.ignore_seed ? spec.seeding.seed_indices : Int[]
     obs = finite_observations(
         pathology.data;
@@ -176,9 +176,9 @@ function fit_synthetic_smoke(spec::RunSpec, L::AbstractMatrix, pathology; n_samp
     model = smoke_model(spec, prob, N, Float64.(pathology.timepoints), obs.values, obs)
     sampler_name = uppercase(spec.inference.sampler)
     if sampler_name == "NUTS"
-        return sample(model, NUTS(spec.inference.n_warmup, spec.inference.target_acceptance; adtype = AutoReverseDiff()), n_samples; progress=false)
+        return sample(model, NUTS(spec.inference.n_warmup, spec.inference.target_acceptance; adtype = AutoReverseDiff()), n_samples; progress=progress)
     elseif sampler_name == "MH"
-        return sample(model, MH(), n_samples; progress=false)
+        return sample(model, MH(), n_samples; progress=progress)
     else
         error("Unsupported sampler: $(spec.inference.sampler)")
     end
@@ -215,10 +215,10 @@ function _resolve_path(path_str::AbstractString, config_dir::AbstractString)
     return candidates[1]
 end
 
-function fit_and_save_run(spec::RunSpec; run_root::AbstractString, run_id::Union{Nothing,String}=nothing)
+function fit_and_save_run(spec::RunSpec; run_root::AbstractString, run_id::Union{Nothing,String}=nothing, progress::Bool=false)
     transport = build_transport_operator(spec.data.network; transport=spec.model.transport)
     pathology = process_pathology(spec.data.observations; network_csv=spec.data.network)
-    chain = fit_synthetic_smoke(spec, transport.L, pathology; n_samples=spec.inference.n_samples)
+    chain = fit_synthetic_smoke(spec, transport.L, pathology; n_samples=spec.inference.n_samples, progress=progress)
     params = posterior_mean_parameter_vector(chain, spec.model.name, length(transport.labels))
     seed_mean = posterior_mean_seed(chain)
     pred = simulate_trajectory(spec, transport.L, transport.labels, pathology.timepoints, params; seed_value=seed_mean)
