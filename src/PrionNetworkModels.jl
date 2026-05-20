@@ -33,7 +33,7 @@ export spec_to_dict, bundle_paths
 export MODEL_STATE_DIMENSIONS, MODEL_PARAMETER_NAMES, MODEL_REGIONAL_PARAMETER_NAMES
 export read_network_csv, build_transport_operator, process_pathology, mean_over_replicates, summarize_over_replicates
 export initial_state, make_ode_problem, simulate_trajectory, default_parameter_vector, observed_matrix
-export fit_synthetic_smoke, write_posterior_hdf5, posterior_summary_table
+export fit_posterior_chain, write_posterior_hdf5, posterior_summary_table
 export posterior_mean_parameter_vector, posterior_mean_seed, parameter_names_for_model
 export resolve_data_paths, fit_and_save_run
 export plot_run_bundle, load_run_matrix

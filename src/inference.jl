@@ -69,7 +69,7 @@ function parameter_names_for_model(model_name::AbstractString, N::Integer)
     end
 end
 
-@model function smoke_model(spec::RunSpec, prob::ODEProblem, N::Integer, timepoints::Vector{Float64}, obs_vals::Vector{Float64}, obs_info)
+@model function inference_model(spec::RunSpec, prob::ODEProblem, N::Integer, timepoints::Vector{Float64}, obs_vals::Vector{Float64}, obs_info)
     priors = default_priors(spec.model.name, N)
 
     if spec.model.name == "DIFF"
@@ -93,7 +93,7 @@ end
         seed ~ priors.seed
         params = vcat([rho, alpha], beta, gamma)
     else
-        error("Unsupported model in smoke_model: $(spec.model.name)")
+        error("Unsupported model in inference_model: $(spec.model.name)")
     end
 
     predicted = solve(
@@ -164,7 +164,7 @@ function write_posterior_hdf5(path::AbstractString, chain::Chains, spec::RunSpec
     return path
 end
 
-function fit_synthetic_smoke(spec::RunSpec, L::AbstractMatrix, pathology; n_samples::Int=200, progress::Bool=false)
+function fit_posterior_chain(spec::RunSpec, L::AbstractMatrix, pathology; n_samples::Int=200, progress::Bool=false)
     ignore_regions = spec.inference.ignore_seed ? spec.seeding.seed_indices : Int[]
     obs = finite_observations(
         pathology.data;
@@ -173,7 +173,7 @@ function fit_synthetic_smoke(spec::RunSpec, L::AbstractMatrix, pathology; n_samp
     )
     N = size(L, 1)
     prob = make_ode_problem(spec, Matrix{Float64}(L), ["r$(i)" for i in 1:N], pathology.timepoints)
-    model = smoke_model(spec, prob, N, Float64.(pathology.timepoints), obs.values, obs)
+    model = inference_model(spec, prob, N, Float64.(pathology.timepoints), obs.values, obs)
     sampler_name = uppercase(spec.inference.sampler)
     if sampler_name == "NUTS"
         return sample(model, NUTS(spec.inference.n_warmup, spec.inference.target_acceptance; adtype = AutoReverseDiff()), n_samples; progress=progress)
@@ -218,7 +218,7 @@ end
 function fit_and_save_run(spec::RunSpec; run_root::AbstractString, run_id::Union{Nothing,String}=nothing, progress::Bool=false)
     transport = build_transport_operator(spec.data.network; transport=spec.model.transport)
     pathology = process_pathology(spec.data.observations; network_csv=spec.data.network)
-    chain = fit_synthetic_smoke(spec, transport.L, pathology; n_samples=spec.inference.n_samples, progress=progress)
+    chain = fit_posterior_chain(spec, transport.L, pathology; n_samples=spec.inference.n_samples, progress=progress)
     params = posterior_mean_parameter_vector(chain, spec.model.name, length(transport.labels))
     seed_mean = posterior_mean_seed(chain)
     pred = simulate_trajectory(spec, transport.L, transport.labels, pathology.timepoints, params; seed_value=seed_mean)
