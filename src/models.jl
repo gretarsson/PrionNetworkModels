@@ -18,7 +18,7 @@ const MODEL_STATE_DIMENSIONS = Dict(
 
 function diff_model!(du, u, p, t; L)
     rho = p[1]
-    du .= -rho .* (L * u)
+    du .= -rho * L * u
     return nothing
 end
 
@@ -27,7 +27,7 @@ function diff_r_model!(du, u, p, t; L)
     rho = p[1]
     alpha = p[2]
     beta = @view p[3:(N + 2)]
-    du .= -rho .* (L * u) .+ alpha .* u .* (beta .- u)
+    du .= -rho * L * u .+ alpha .* u .* (beta .- u)
     return nothing
 end
 
@@ -41,7 +41,7 @@ function diff_rf_model!(du, u, p, t; L)
     x = @view u[1:N]
     y = @view u[(N + 1):(2 * N)]
 
-    du[1:N] .= -rho .* (L * x) .+ alpha .* x .* (beta .- y .- x)
+    du[1:N] .= -rho * L * x .+ alpha .* x .* (beta .- y .- x)
     du[(N + 1):(2 * N)] .= gamma .* x
     return nothing
 end
