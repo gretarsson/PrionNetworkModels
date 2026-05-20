@@ -11,8 +11,122 @@ function load_posterior_draws(path::AbstractString)
     h5open(path, "r") do h5
         samples = Matrix{Float64}(read(h5["chains/samples"]))
         parameter_names = String.(read(h5["chains/parameter_names"]))
-        return (samples = samples, parameter_names = parameter_names)
+        chain_ids = haskey(h5, "chains/chain_ids") ? Int.(read(h5["chains/chain_ids"])) : ones(Int, size(samples, 1))
+        return (samples = samples, parameter_names = parameter_names, chain_ids = chain_ids)
     end
+end
+
+function posterior_chains(posterior)
+    chain_ids = Int.(posterior.chain_ids)
+    unique_ids = sort(unique(chain_ids))
+    length(unique_ids) >= 2 || error("Need at least two chains for convergence diagnostics")
+
+    sample_counts = [count(==(chain_id), chain_ids) for chain_id in unique_ids]
+    n_samples = minimum(sample_counts)
+    n_params = size(posterior.samples, 2)
+    arr = Array{Float64}(undef, n_samples, n_params, length(unique_ids))
+
+    for (j, chain_id) in enumerate(unique_ids)
+        idxs = findall(==(chain_id), chain_ids)
+        arr[:, :, j] = posterior.samples[idxs[1:n_samples], :]
+    end
+
+    return Chains(arr, Symbol.(posterior.parameter_names))
+end
+
+is_local_param(name::String) = startswith(name, "beta[") || startswith(name, "gamma[")
+
+function split_local_params(rhats::Dict{String,Float64})
+    beta = Dict{String,Float64}()
+    gamma = Dict{String,Float64}()
+    for (name, val) in rhats
+        if startswith(name, "beta[")
+            beta[name] = val
+        elseif startswith(name, "gamma[")
+            gamma[name] = val
+        end
+    end
+    return beta, gamma
+end
+
+function compute_rhat_semantic(chain::Chains)
+    rhat_obj = MCMCChains.MCMCDiagnosticTools.rhat(chain)
+    raw_names = String.(rhat_obj.nt.parameters)
+    raw_vals = rhat_obj.nt.rhat
+
+    semantic_rhat = Dict{String,Float64}()
+    for (name, val) in zip(raw_names, raw_vals)
+        if name == "lp" || name == "lp__"
+            continue
+        end
+        semantic_rhat[name] = val
+    end
+    return semantic_rhat
+end
+
+function plot_rhat_scatter(output_path::AbstractString, rhats::Dict{String,Float64}; title::AbstractString="")
+    isempty(rhats) && return nothing
+
+    selected = collect(keys(rhats))
+    sort!(selected)
+    ys = [rhats[name] for name in selected]
+    xs = 1:length(selected)
+
+    plt = scatter(
+        xs,
+        ys;
+        xlabel = "Parameter index",
+        ylabel = "Rhat",
+        title = String(title),
+        markersize = 6,
+        alpha = 0.85,
+        color = RGB(0 / 255, 71 / 255, 171 / 255),
+        legend = false,
+        size = (900, 500),
+    )
+
+    for (val, col, lw) in ((1.00, :gray60, 1.0), (1.01, :green4, 1.5), (1.05, :orange, 2.0), (1.10, :red, 2.0))
+        hline!(plt, [val]; color = col, lw = lw, ls = :dash)
+    end
+
+    if length(selected) <= 25
+        xticks!(plt, xs, selected)
+        plot!(plt; xrotation = 45)
+    end
+
+    savefig(plt, output_path)
+    return output_path
+end
+
+function diagnostics_plots(run_dir::AbstractString, output_dir::AbstractString)
+    mkpath(output_dir)
+
+    posterior = load_posterior_draws(joinpath(run_dir, "posterior.h5"))
+    chain = posterior_chains(posterior)
+    rhats = compute_rhat_semantic(chain)
+
+    global_rhats = Dict(name => val for (name, val) in rhats if !is_local_param(name))
+    beta_rhats, gamma_rhats = split_local_params(rhats)
+
+    plot_rhat_scatter(joinpath(output_dir, "global_rhat.pdf"), global_rhats; title = "Global Parameters")
+    isempty(beta_rhats) || plot_rhat_scatter(joinpath(output_dir, "beta_rhat.pdf"), beta_rhats; title = "Beta Parameters")
+    isempty(gamma_rhats) || plot_rhat_scatter(joinpath(output_dir, "gamma_rhat.pdf"), gamma_rhats; title = "Gamma Parameters")
+
+    names = String[]
+    families = String[]
+    values = Float64[]
+    for (name, val) in sort(collect(global_rhats); by = first)
+        push!(names, name); push!(families, "global"); push!(values, val)
+    end
+    for (name, val) in sort(collect(beta_rhats); by = first)
+        push!(names, name); push!(families, "beta"); push!(values, val)
+    end
+    for (name, val) in sort(collect(gamma_rhats); by = first)
+        push!(names, name); push!(families, "gamma"); push!(values, val)
+    end
+    CSV.write(joinpath(output_dir, "rhat_summary.csv"), DataFrame(parameter = names, family = families, rhat = values))
+
+    return output_dir
 end
 
 function load_observation_summary(path_csv::AbstractString; network_csv::Union{Nothing,String}=nothing)
@@ -206,6 +320,9 @@ function plot_run_bundle(run_dir::AbstractString; output_dir::Union{Nothing,Stri
             joinpath(outdir, "retrodiction");
             run_dir = run_dir,
         )
+        if isfile(joinpath(run_dir, "posterior.h5"))
+            diagnostics_plots(run_dir, joinpath(outdir, "diagnostics"))
+        end
     else
         error("Run bundle is missing predictions_train.csv: $run_dir")
     end
