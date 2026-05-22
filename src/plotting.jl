@@ -276,6 +276,88 @@ function plot_chain_loglik(output_path::AbstractString, metrics::DataFrame)
     return output_path
 end
 
+function plot_seed_region_chain_comparison(output_path::AbstractString, run_dir::AbstractString)
+    spec = resolve_bundle_spec_paths(load_run_spec(joinpath(run_dir, "spec.toml")), run_dir)
+    transport = build_transport_operator(spec.data.network; transport = spec.model.transport)
+    pathology = process_pathology(spec.data.observations; network_csv = spec.data.network)
+    posterior = load_posterior_draws(joinpath(run_dir, "posterior.h5"))
+
+    param_names = posterior.parameter_names
+    samples = posterior.samples
+    chain_ids = posterior.chain_ids
+    name_to_idx = Dict(name => idx for (idx, name) in enumerate(param_names))
+    n_regions = length(transport.labels)
+    parameter_order = trajectory_parameter_names(spec.model.name, n_regions)
+    parameter_indices = [get(name_to_idx, name, 0) for name in parameter_order]
+    any(==(0), parameter_indices) && error("Posterior draws are missing required parameters for $(spec.model.name)")
+
+    seed_index = get(name_to_idx, "seed", 0)
+    seed_index == 0 && error("Posterior draws are missing the seed parameter")
+
+    summary = summarize_over_replicates(pathology.data)
+    seed_regions = spec.seeding.seed_indices
+    seed_labels = pathology.labels[seed_regions]
+    timepoints = pathology.timepoints
+
+    plt = plot(
+        layout = (length(seed_regions), 1),
+        size = (900, 320 * length(seed_regions)),
+    )
+
+    colors = [
+        RGB(0 / 255, 71 / 255, 171 / 255),
+        RGB(196 / 255, 54 / 255, 22 / 255),
+        RGB(0 / 255, 136 / 255, 55 / 255),
+        RGB(123 / 255, 31 / 255, 162 / 255),
+    ]
+
+    for (panel_idx, region_idx) in enumerate(seed_regions)
+        subplot = plot(
+            xlabel = "Time",
+            ylabel = "Pathology",
+            title = "Seed Region: $(seed_labels[panel_idx])",
+            legend = :topright,
+            ylims = (0.0, max(maximum(skipmissing(summary.mean[region_idx, :])), 1e-3) * 1.15),
+        )
+
+        region_mean = collect(skipmissing(summary.mean[region_idx, :]))
+        region_se = collect(skipmissing(summary.se[region_idx, :]))
+        # mean/se matrices do not contain missings in current processed dataset, so index directly
+        scatter!(
+            subplot,
+            timepoints,
+            summary.mean[region_idx, :];
+            yerror = summary.se[region_idx, :],
+            markersize = 5,
+            color = :black,
+            label = "Observed mean ± SE",
+        )
+
+        for chain_id in sort(unique(chain_ids))
+            idxs = findall(==(chain_id), chain_ids)
+            chain_mean = vec(mean(samples[idxs, :]; dims = 1))
+            params = collect(chain_mean[parameter_indices])
+            seed_value = chain_mean[seed_index]
+            predicted = simulate_trajectory(spec, transport.L, transport.labels, timepoints, params; seed_value = seed_value)
+            pred_obs = predicted[1:n_regions, :]
+            plot!(
+                subplot,
+                timepoints,
+                pred_obs[region_idx, :];
+                label = "Chain $chain_id",
+                linewidth = 2.0,
+                alpha = 0.9,
+                color = colors[mod1(chain_id, length(colors))],
+            )
+        end
+
+        plot!(plt, subplot; subplot = panel_idx)
+    end
+
+    savefig(plt, output_path)
+    return output_path
+end
+
 function plot_rhat_scatter(output_path::AbstractString, rhats::Dict{String,Float64}; title::AbstractString="")
     isempty(rhats) && return nothing
 
@@ -357,6 +439,7 @@ function diagnostics_plots(run_dir::AbstractString, output_dir::AbstractString)
     fit_metrics = chain_fit_metrics(run_dir)
     CSV.write(joinpath(output_dir, "chain_fit_metrics.csv"), fit_metrics)
     plot_chain_loglik(joinpath(output_dir, "chain_loglik_comparison.pdf"), fit_metrics)
+    plot_seed_region_chain_comparison(joinpath(output_dir, "seed_region_chain_comparison.pdf"), run_dir)
 
     return output_dir
 end
