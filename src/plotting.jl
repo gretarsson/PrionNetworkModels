@@ -299,17 +299,14 @@ function plot_seed_region_chain_comparison(output_path::AbstractString, run_dir:
     seed_labels = pathology.labels[seed_regions]
     timepoints = pathology.timepoints
 
-    plt = plot(
-        layout = (length(seed_regions), 1),
-        size = (900, 320 * length(seed_regions)),
-    )
-
     colors = [
         RGB(0 / 255, 71 / 255, 171 / 255),
         RGB(196 / 255, 54 / 255, 22 / 255),
         RGB(0 / 255, 136 / 255, 55 / 255),
         RGB(123 / 255, 31 / 255, 162 / 255),
     ]
+
+    subplots = Plots.Plot[]
 
     for (panel_idx, region_idx) in enumerate(seed_regions)
         subplot = plot(
@@ -320,9 +317,6 @@ function plot_seed_region_chain_comparison(output_path::AbstractString, run_dir:
             ylims = (0.0, max(maximum(skipmissing(summary.mean[region_idx, :])), 1e-3) * 1.15),
         )
 
-        region_mean = collect(skipmissing(summary.mean[region_idx, :]))
-        region_se = collect(skipmissing(summary.se[region_idx, :]))
-        # mean/se matrices do not contain missings in current processed dataset, so index directly
         scatter!(
             subplot,
             timepoints,
@@ -351,9 +345,10 @@ function plot_seed_region_chain_comparison(output_path::AbstractString, run_dir:
             )
         end
 
-        plot!(plt, subplot; subplot = panel_idx)
+        push!(subplots, subplot)
     end
 
+    plt = plot(subplots...; layout = (length(seed_regions), 1), size = (900, 320 * length(seed_regions)))
     savefig(plt, output_path)
     return output_path
 end
