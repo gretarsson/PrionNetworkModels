@@ -164,6 +164,118 @@ function chain_parameter_means(chain::Chains, parameters::Vector{String})
     return rows
 end
 
+function chain_fit_metrics(run_dir::AbstractString)
+    spec = resolve_bundle_spec_paths(load_run_spec(joinpath(run_dir, "spec.toml")), run_dir)
+    transport = build_transport_operator(spec.data.network; transport = spec.model.transport)
+    pathology = process_pathology(spec.data.observations; network_csv = spec.data.network)
+    posterior = load_posterior_draws(joinpath(run_dir, "posterior.h5"))
+
+    param_names = posterior.parameter_names
+    samples = posterior.samples
+    chain_ids = posterior.chain_ids
+    name_to_idx = Dict(name => idx for (idx, name) in enumerate(param_names))
+    n_regions = length(transport.labels)
+    parameter_order = trajectory_parameter_names(spec.model.name, n_regions)
+    parameter_indices = [get(name_to_idx, name, 0) for name in parameter_order]
+    any(==(0), parameter_indices) && error("Posterior draws are missing required parameters for $(spec.model.name)")
+
+    seed_index = get(name_to_idx, "seed", 0)
+    sigma_index = get(name_to_idx, "sigma", 0)
+    (seed_index == 0 || sigma_index == 0) && error("Posterior draws are missing seed or sigma parameters")
+
+    ignore_regions = spec.inference.ignore_seed ? spec.seeding.seed_indices : Int[]
+    obs_all = finite_observations(pathology.data; mean_data = spec.inference.mean_data, ignore_regions = ignore_regions)
+    seed_data = pathology.data[spec.seeding.seed_indices, :, :]
+    obs_seed = finite_observations(seed_data; mean_data = spec.inference.mean_data, ignore_regions = Int[])
+
+    rows = DataFrame(
+        chain = Int[],
+        loglik_all = Float64[],
+        loglik_seed = Float64[],
+        rmse_all = Float64[],
+        mae_all = Float64[],
+        sigma = Float64[],
+        seed = Float64[],
+    )
+
+    for chain_id in sort(unique(chain_ids))
+        idxs = findall(==(chain_id), chain_ids)
+        chain_mean = vec(mean(samples[idxs, :]; dims = 1))
+        params = collect(chain_mean[parameter_indices])
+        seed_value = chain_mean[seed_index]
+        sigma = chain_mean[sigma_index]
+
+        predicted = simulate_trajectory(spec, transport.L, transport.labels, pathology.timepoints, params; seed_value = seed_value)
+        predicted_obs = predicted[1:n_regions, :]
+
+        if spec.inference.mean_data
+            observed_matrix_all = observed_matrix(pathology.data)
+            pred_all = vec(predicted_obs[obs_all.mask])
+            obs_vec_all = obs_all.values
+
+            observed_matrix_seed = observed_matrix(seed_data)
+            pred_seed = vec(predicted_obs[spec.seeding.seed_indices, :][obs_seed.mask])
+            obs_vec_seed = obs_seed.values
+        else
+            pred_rep_all = cat([predicted_obs for _ in 1:obs_all.n_samples]..., dims = 3)
+            pred_all = vec(pred_rep_all)[obs_all.nonmissing]
+            obs_vec_all = obs_all.values
+
+            pred_seed_regions = predicted_obs[spec.seeding.seed_indices, :]
+            pred_rep_seed = cat([pred_seed_regions for _ in 1:obs_seed.n_samples]..., dims = 3)
+            pred_seed = vec(pred_rep_seed)[obs_seed.nonmissing]
+            obs_vec_seed = obs_seed.values
+        end
+
+        residuals = obs_vec_all .- pred_all
+        loglik_all = sum(logpdf.(Normal.(pred_all, sigma), obs_vec_all))
+        loglik_seed = sum(logpdf.(Normal.(pred_seed, sigma), obs_vec_seed))
+        rmse_all = sqrt(mean(residuals .^ 2))
+        mae_all = mean(abs.(residuals))
+
+        push!(rows, (chain_id, loglik_all, loglik_seed, rmse_all, mae_all, sigma, seed_value))
+    end
+
+    return rows
+end
+
+function plot_chain_loglik(output_path::AbstractString, metrics::DataFrame)
+    nrow(metrics) == 0 && return nothing
+
+    chain_labels = string.(metrics.chain)
+    xs = collect(1:nrow(metrics))
+
+    plt_all = scatter(
+        xs,
+        metrics.loglik_all;
+        xlabel = "Chain",
+        ylabel = "Log-likelihood",
+        title = "All Observations",
+        markersize = 8,
+        alpha = 0.9,
+        color = RGB(0 / 255, 71 / 255, 171 / 255),
+        legend = false,
+        xticks = (xs, chain_labels),
+    )
+
+    plt_seed = scatter(
+        xs,
+        metrics.loglik_seed;
+        xlabel = "Chain",
+        ylabel = "Log-likelihood",
+        title = "Seed Region Observations",
+        markersize = 8,
+        alpha = 0.9,
+        color = RGB(196 / 255, 54 / 255, 22 / 255),
+        legend = false,
+        xticks = (xs, chain_labels),
+    )
+
+    plt = plot(plt_all, plt_seed; layout = (2, 1), size = (900, 800))
+    savefig(plt, output_path)
+    return output_path
+end
+
 function plot_rhat_scatter(output_path::AbstractString, rhats::Dict{String,Float64}; title::AbstractString="")
     isempty(rhats) && return nothing
 
@@ -241,6 +353,10 @@ function diagnostics_plots(run_dir::AbstractString, output_dir::AbstractString)
 
     chain_means = chain_parameter_means(chain, collect(flagged.parameter))
     CSV.write(joinpath(output_dir, "flagged_chain_means.csv"), chain_means)
+
+    fit_metrics = chain_fit_metrics(run_dir)
+    CSV.write(joinpath(output_dir, "chain_fit_metrics.csv"), fit_metrics)
+    plot_chain_loglik(joinpath(output_dir, "chain_loglik_comparison.pdf"), fit_metrics)
 
     return output_dir
 end
