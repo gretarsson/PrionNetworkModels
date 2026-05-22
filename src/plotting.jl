@@ -34,6 +34,35 @@ function posterior_chains(posterior)
     return Chains(arr, Symbol.(posterior.parameter_names))
 end
 
+function chains_long_df(chain::Chains)
+    arr = Array(chain)
+    n_iter, n_param, n_chain = size(arr)
+    params = String.(names(chain, :parameters))
+
+    iterations = Int[]
+    chain_ids = Int[]
+    parameter_names = String[]
+    values = Float64[]
+    sizehint!(iterations, n_iter * n_param * n_chain)
+    sizehint!(chain_ids, n_iter * n_param * n_chain)
+    sizehint!(parameter_names, n_iter * n_param * n_chain)
+    sizehint!(values, n_iter * n_param * n_chain)
+
+    for c in 1:n_chain
+        for p in 1:n_param
+            pname = params[p]
+            for i in 1:n_iter
+                push!(iterations, i)
+                push!(chain_ids, c)
+                push!(parameter_names, pname)
+                push!(values, arr[i, p, c])
+            end
+        end
+    end
+
+    return DataFrame(iteration = iterations, chain = chain_ids, parameter = parameter_names, value = values)
+end
+
 is_local_param(name::String) = startswith(name, "beta[") || startswith(name, "gamma[")
 
 function split_local_params(rhats::Dict{String,Float64})
@@ -62,6 +91,77 @@ function compute_rhat_semantic(chain::Chains)
         semantic_rhat[name] = val
     end
     return semantic_rhat
+end
+
+function compute_summary_stats(chain::Chains)
+    return DataFrame(MCMCChains.summarystats(chain))
+end
+
+function top_problem_parameters(summary::DataFrame; top_k_local::Int=12)
+    summary = copy(summary)
+    summary.parameter = String.(summary.parameters)
+    summary.family = map(summary.parameter) do name
+        if startswith(name, "beta[")
+            "beta"
+        elseif startswith(name, "gamma[")
+            "gamma"
+        else
+            "global"
+        end
+    end
+
+    globals = sort(summary[summary.family .== "global", :], :rhat, rev = true)
+    locals = sort(summary[summary.family .!= "global", :], :rhat, rev = true)
+    selected = vcat(globals, first(locals, min(top_k_local, nrow(locals))))
+    return unique(selected[:, [:parameter, :family, :rhat, :ess_bulk, :ess_tail]])
+end
+
+function plot_trace(output_path::AbstractString, chain::Chains, parameter::AbstractString)
+    symbol_name = Symbol(parameter)
+    arr = Array(chain[symbol_name])
+    ndims(arr) == 2 || error("Unexpected chain shape for $parameter")
+    n_iter, n_chain = size(arr)
+
+    plt = plot(
+        xlabel = "Iteration",
+        ylabel = parameter,
+        title = "Trace: $parameter",
+        legend = :topright,
+        size = (900, 500),
+    )
+
+    colors = [
+        RGB(0 / 255, 71 / 255, 171 / 255),
+        RGB(196 / 255, 54 / 255, 22 / 255),
+        RGB(0 / 255, 136 / 255, 55 / 255),
+        RGB(123 / 255, 31 / 255, 162 / 255),
+    ]
+    for c in 1:n_chain
+        plot!(
+            plt,
+            1:n_iter,
+            arr[:, c];
+            label = "Chain $c",
+            linewidth = 1.7,
+            alpha = 0.9,
+            color = colors[mod1(c, length(colors))],
+        )
+    end
+
+    savefig(plt, output_path)
+    return output_path
+end
+
+function chain_parameter_means(chain::Chains, parameters::Vector{String})
+    rows = DataFrame(parameter = String[], chain = Int[], mean = Float64[], sd = Float64[])
+    for parameter in parameters
+        arr = Array(chain[Symbol(parameter)])
+        n_iter, n_chain = size(arr)
+        for c in 1:n_chain
+            push!(rows, (parameter, c, mean(arr[:, c]), std(arr[:, c])))
+        end
+    end
+    return rows
 end
 
 function plot_rhat_scatter(output_path::AbstractString, rhats::Dict{String,Float64}; title::AbstractString="")
@@ -103,6 +203,7 @@ function diagnostics_plots(run_dir::AbstractString, output_dir::AbstractString)
 
     posterior = load_posterior_draws(joinpath(run_dir, "posterior.h5"))
     chain = posterior_chains(posterior)
+    summary = compute_summary_stats(chain)
     rhats = compute_rhat_semantic(chain)
 
     global_rhats = Dict(name => val for (name, val) in rhats if !is_local_param(name))
@@ -125,6 +226,21 @@ function diagnostics_plots(run_dir::AbstractString, output_dir::AbstractString)
         push!(names, name); push!(families, "gamma"); push!(values, val)
     end
     CSV.write(joinpath(output_dir, "rhat_summary.csv"), DataFrame(parameter = names, family = families, rhat = values))
+
+    CSV.write(joinpath(output_dir, "summary_stats.csv"), summary)
+
+    flagged = top_problem_parameters(summary)
+    CSV.write(joinpath(output_dir, "flagged_parameters.csv"), flagged)
+
+    trace_dir = joinpath(output_dir, "trace")
+    mkpath(trace_dir)
+    for parameter in flagged.parameter
+        safe_name = replace(parameter, "[" => "_", "]" => "", "/" => "_")
+        plot_trace(joinpath(trace_dir, "trace_$(safe_name).pdf"), chain, parameter)
+    end
+
+    chain_means = chain_parameter_means(chain, collect(flagged.parameter))
+    CSV.write(joinpath(output_dir, "flagged_chain_means.csv"), chain_means)
 
     return output_dir
 end
