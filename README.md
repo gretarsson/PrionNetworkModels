@@ -111,7 +111,7 @@ mouse_1,1.0,0.2,0.05,0.03
 
 You do that in a TOML config file under `configs/`.
 
-Example: [diff_r.toml](/Users/gretarsson/Desktop/PrionNetworkModels/configs/examples/diff_r.toml)
+Example: [diff_r.toml](configs/examples/diff_r.toml)
 
 ```toml
 [model]
@@ -164,14 +164,39 @@ strategy = "none"
 
 ## How Priors Work Right Now
 
-Right now, priors are defined in code in [inference.jl](/Users/gretarsson/Desktop/PrionNetworkModels/src/inference.jl), in the `default_priors` function.
+Default priors are defined in code in [inference.jl](src/inference.jl), in the `default_priors` function.
 
 That means:
 
 - model choice, transport, seeds, and inference settings are user-facing in the config,
-- priors are still code-facing for now.
+- default prior families are still code-facing for now,
+- selected parameters can optionally use posterior-derived priors from an earlier run bundle.
 
 This is an honest temporary state while the core workflow is being stabilized. The next step will be to make priors configurable by profile, and then configurable more directly from TOML.
+
+### Posterior-Derived Priors
+
+A run can borrow selected parameter priors from an earlier run bundle by adding a `[priors.posterior]` block.
+
+For example, this hippocampus config uses the merged striatum `DIFF-RF` posterior for only the global parameters `rho`, `alpha`, and `sigma`:
+
+```toml
+[priors.posterior]
+source = "runs/striatum_DIFF-RF_RETRO"
+parameters = ["rho", "alpha", "sigma"]
+widen = 2.5
+min_sd = 1e-6
+```
+
+The source can be either a run directory containing `posterior.h5` or a direct path to a posterior HDF5 file. Each selected prior is fit as `Normal(posterior_mean, widen * posterior_sd)`, preserving nonnegative support when the default prior is nonnegative.
+
+You can also use wildcard patterns:
+
+```toml
+patterns = ["beta[*]"]
+```
+
+Omit local parameters such as `beta[*]` and `gamma[*]` when you want only global posterior priors.
 
 ## Quick Start: Synthetic Example
 
@@ -180,32 +205,29 @@ This is an honest temporary state while the core workflow is being stabilized. T
 This makes a random `N=10` network and simulated DIFF-RF observations:
 
 ```bash
-julia --project=/Users/gretarsson/Desktop/PrionNetworkModels \
-  /Users/gretarsson/Desktop/PrionNetworkModels/scripts/reproduce_core_examples.jl
+julia --project=. scripts/reproduce_core_examples.jl
 ```
 
 This writes:
 
-- [network.csv](/Users/gretarsson/Desktop/PrionNetworkModels/data/examples/network.csv)
-- [observations.csv](/Users/gretarsson/Desktop/PrionNetworkModels/data/examples/observations.csv)
-- [observations_summary.csv](/Users/gretarsson/Desktop/PrionNetworkModels/data/examples/observations_summary.csv)
-- [generating_parameters_diff_rf.csv](/Users/gretarsson/Desktop/PrionNetworkModels/data/examples/generating_parameters_diff_rf.csv)
+- [network.csv](data/examples/network.csv)
+- [observations.csv](data/examples/observations.csv)
+- [observations_summary.csv](data/examples/observations_summary.csv)
+- [generating_parameters_diff_rf.csv](data/examples/generating_parameters_diff_rf.csv)
 
 ### Step 2. Run Bayesian inference on that synthetic example
 
 Option A: use the dedicated smoke-test script
 
 ```bash
-julia --project=/Users/gretarsson/Desktop/PrionNetworkModels \
-  /Users/gretarsson/Desktop/PrionNetworkModels/scripts/smoke_fit_diff_rf.jl
+julia --project=. scripts/smoke_fit_diff_rf.jl
 ```
 
 Option B: use the generic runner
 
 ```bash
-julia --project=/Users/gretarsson/Desktop/PrionNetworkModels \
-  /Users/gretarsson/Desktop/PrionNetworkModels/scripts/fit_model.jl \
-  --config /Users/gretarsson/Desktop/PrionNetworkModels/configs/examples/diff_r.toml \
+julia --project=. scripts/fit_model.jl \
+  --config configs/examples/diff_r.toml \
   --run-id my-first-fit \
   --samples 150 \
   --warmup 150
@@ -214,9 +236,8 @@ julia --project=/Users/gretarsson/Desktop/PrionNetworkModels \
 ### Step 3. Make plots from the run bundle
 
 ```bash
-julia --project=/Users/gretarsson/Desktop/PrionNetworkModels \
-  /Users/gretarsson/Desktop/PrionNetworkModels/scripts/plot_run.jl \
-  --run /Users/gretarsson/Desktop/PrionNetworkModels/runs/my-first-fit
+julia --project=. scripts/plot_run.jl \
+  --run runs/my-first-fit
 ```
 
 This writes plots under:
@@ -238,19 +259,41 @@ For larger real datasets, the intended workflow is:
 The paper-oriented striatum retrograde submission script is:
 
 ```bash
-/Users/gretarsson/Desktop/PrionNetworkModels/scripts/run_inferences.sh
+scripts/run_inferences.sh
 ```
 
-That submits four single-chain jobs for each of:
+That submits four single-chain jobs for each paper retrograde config:
 
 - `DIFF`
 - `DIFF-R`
 - `DIFF-RF`
 
+for both the striatum and hippocampus datasets.
+
+The hippocampus configs are:
+
+- [hippocampus_core.toml](configs/paper/hippocampus_core.toml)
+- [hippocampus_diff_r_core.toml](configs/paper/hippocampus_diff_r_core.toml)
+- [hippocampus_diff_rf_core.toml](configs/paper/hippocampus_diff_rf_core.toml)
+
+These use the legacy hippocampus seed indices `[53, 55, 56]`, corresponding to `iCA1`, `iCA3`, and `iDG`. They fit raw replicate observations by default, matching the striatum configs.
+
+To submit only the hippocampus `DIFF-RF` retrograde jobs, including the posterior-prior variant that borrows striatum global parameters:
+
+```bash
+scripts/run_hippocampus_inferences.sh
+```
+
+That script expects a merged striatum `DIFF-RF` run at:
+
+```text
+runs/striatum_DIFF-RF_RETRO/posterior.h5
+```
+
 To sync all finished run folders and cluster logs back from the cluster to your local machine:
 
 ```bash
-/Users/gretarsson/Desktop/PrionNetworkModels/scripts/sync_runs_from_cluster.sh
+scripts/sync_runs_from_cluster.sh
 ```
 
 By default, that script pulls from:
@@ -259,15 +302,15 @@ By default, that script pulls from:
 
 and syncs into:
 
-- `/Users/gretarsson/Desktop/PrionNetworkModels/runs/`
-- `/Users/gretarsson/Desktop/PrionNetworkModels/logs/`
+- `runs/`
+- `logs/`
 
 You can override the remote host or project path without editing the script, for example:
 
 ```bash
 REMOTE_HOST=alexanderc@cubic-login5 \
 REMOTE_PROJECT_DIR=~/PrionNetworkModels \
-/Users/gretarsson/Desktop/PrionNetworkModels/scripts/sync_runs_from_cluster.sh
+scripts/sync_runs_from_cluster.sh
 ```
 
 If the cluster jobs create runs like:
@@ -280,8 +323,7 @@ If the cluster jobs create runs like:
 then you merge them with:
 
 ```bash
-julia --project=/Users/gretarsson/Desktop/PrionNetworkModels \
-  /Users/gretarsson/Desktop/PrionNetworkModels/scripts/merge_chains.jl \
+julia --project=. scripts/merge_chains.jl \
   --prefix striatum_DIFF-RF_RETRO \
   --out-run-id striatum_DIFF-RF_RETRO
 ```
@@ -289,9 +331,8 @@ julia --project=/Users/gretarsson/Desktop/PrionNetworkModels \
 and then plot the merged run with:
 
 ```bash
-julia --project=/Users/gretarsson/Desktop/PrionNetworkModels \
-  /Users/gretarsson/Desktop/PrionNetworkModels/scripts/plot_run.jl \
-  --run /Users/gretarsson/Desktop/PrionNetworkModels/runs/striatum_DIFF-RF_RETRO
+julia --project=. scripts/plot_run.jl \
+  --run runs/striatum_DIFF-RF_RETRO
 ```
 
 ## What Plots Are Implemented Now
@@ -337,6 +378,6 @@ Planned next:
 
 For more design detail, see:
 
-- [architecture.md](/Users/gretarsson/Desktop/PrionNetworkModels/docs/architecture.md)
-- [run_format.md](/Users/gretarsson/Desktop/PrionNetworkModels/docs/run_format.md)
-- [implementation_checklist.md](/Users/gretarsson/Desktop/PrionNetworkModels/docs/implementation_checklist.md)
+- [architecture.md](docs/architecture.md)
+- [run_format.md](docs/run_format.md)
+- [implementation_checklist.md](docs/implementation_checklist.md)

@@ -3,7 +3,9 @@
 using PrionNetworkModels
 
 function main()
-    root = "/Users/gretarsson/Desktop/PrionNetworkModels"
+    root = dirname(@__DIR__)
+    n_samples = parse(Int, get(ENV, "PNM_SMOKE_SAMPLES", "150"))
+    n_warmup = parse(Int, get(ENV, "PNM_SMOKE_WARMUP", "150"))
     spec = RunSpec(
         model = ModelSpec(name="DIFF-RF", transport="retrograde", parameter_sharing="independent"),
         data = DataSpec(
@@ -16,8 +18,8 @@ function main()
             n_chains = 1,
             target_acceptance = 0.8,
             sampler = "NUTS",
-            n_samples = 150,
-            n_warmup = 150,
+            n_samples = n_samples,
+            n_warmup = n_warmup,
             mean_data = false,
             ignore_seed = false,
         ),

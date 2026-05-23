@@ -9,6 +9,9 @@ declare -A CONFIGS
 CONFIGS["striatum_DIFF_RETRO"]="configs/paper/striatum_core.toml"
 CONFIGS["striatum_DIFF-R_RETRO"]="configs/paper/striatum_diff_r_core.toml"
 CONFIGS["striatum_DIFF-RF_RETRO"]="configs/paper/striatum_diff_rf_core.toml"
+CONFIGS["hippocampus_DIFF_RETRO"]="configs/paper/hippocampus_core.toml"
+CONFIGS["hippocampus_DIFF-R_RETRO"]="configs/paper/hippocampus_diff_r_core.toml"
+CONFIGS["hippocampus_DIFF-RF_RETRO"]="configs/paper/hippocampus_diff_rf_core.toml"
 
 for JOBNAME in "${!CONFIGS[@]}"; do
   CONFIG_PATH="${CONFIGS[$JOBNAME]}"
@@ -19,4 +22,4 @@ for JOBNAME in "${!CONFIGS[@]}"; do
   done
 done
 
-echo "All striatum retrograde jobs submitted."
+echo "All paper retrograde jobs submitted."

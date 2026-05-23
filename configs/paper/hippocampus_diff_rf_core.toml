@@ -1,5 +1,5 @@
 [model]
-name = "DIFF"
+name = "DIFF-RF"
 transport = "retrograde"
 parameter_sharing = "independent"
 

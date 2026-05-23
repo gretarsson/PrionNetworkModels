@@ -28,6 +28,82 @@ function default_priors(model_name::AbstractString, N::Integer)
     end
 end
 
+function resolve_priors(spec::RunSpec, N::Integer)
+    priors = default_priors(spec.model.name, N)
+    isnothing(spec.posterior_priors.source) && return priors
+    return apply_posterior_priors(priors, spec.posterior_priors)
+end
+
+function apply_posterior_priors(base_priors::NamedTuple, posterior_spec::PosteriorPriorSpec)
+    source = posterior_spec.source
+    isnothing(source) && return base_priors
+
+    posterior_path = posterior_source_path(source)
+    posterior = load_posterior_hdf5(posterior_path)
+    parameter_names = posterior.parameter_names
+    prior_updates = Dict{Symbol,Any}()
+
+    for (idx, name) in enumerate(parameter_names)
+        should_update_parameter(name, posterior_spec) || continue
+        key = Symbol(name)
+        haskey(base_priors, key) || error("Posterior-prior parameter '$name' is not a base prior for this model")
+        values = posterior.samples[:, idx]
+        prior_updates[key] = posterior_prior_distribution(values, base_priors[key], posterior_spec)
+    end
+
+    requested = Set(posterior_spec.parameters)
+    found = Set(name for name in parameter_names if should_update_parameter(name, posterior_spec))
+    missing = setdiff(requested, found)
+    isempty(missing) || error("Posterior source is missing requested parameter(s): $(join(sort(collect(missing)), ", "))")
+
+    return merge(base_priors, (; prior_updates...))
+end
+
+function posterior_source_path(source::AbstractString)
+    if isdir(source)
+        path = joinpath(source, "posterior.h5")
+        isfile(path) || error("Posterior-prior source directory is missing posterior.h5: $source")
+        return path
+    end
+    isfile(source) || error("Posterior-prior source does not exist: $source")
+    return String(source)
+end
+
+function should_update_parameter(name::AbstractString, spec::PosteriorPriorSpec)
+    name in spec.parameters && return true
+    return any(parameter_pattern_matches(name, pattern) for pattern in spec.patterns)
+end
+
+function parameter_pattern_matches(name::AbstractString, pattern::AbstractString)
+    special = Set(['.', '^', '$', '+', '?', '(', ')', '{', '}', '|', '\\', '[', ']'])
+    buf = IOBuffer()
+    print(buf, "^")
+    for ch in pattern
+        if ch == '*'
+            print(buf, ".*")
+        elseif ch in special
+            print(buf, "\\", ch)
+        else
+            print(buf, ch)
+        end
+    end
+    print(buf, "\$")
+    return occursin(Regex(String(take!(buf))), name)
+end
+
+function posterior_prior_distribution(values::AbstractVector, base_prior, spec::PosteriorPriorSpec)
+    mu = mean(values)
+    sd = max(std(values) * spec.widen, spec.min_sd)
+    if prior_is_nonnegative(base_prior)
+        return truncated(Normal(mu, sd), 0.0, Inf)
+    end
+    return Normal(mu, sd)
+end
+
+function prior_is_nonnegative(distribution; eps::Float64=1e-12)
+    return !insupport(distribution, -eps) && insupport(distribution, 0.0)
+end
+
 function finite_observations(data::AbstractArray; mean_data::Bool=false, ignore_regions::Vector{Int}=Int[])
     working = copy(data)
     if !isempty(ignore_regions)
@@ -56,33 +132,48 @@ function finite_observations(data::AbstractArray; mean_data::Bool=false, ignore_
     )
 end
 
-function parameter_names_for_model(model_name::AbstractString, N::Integer)
+function seed_parameter_names(spec::RunSpec)
+    n_seeds = length(spec.seeding.seed_indices)
+    return n_seeds == 1 ? ["seed"] : ["seed_values[$i]" for i in 1:n_seeds]
+end
+
+function parameter_names_for_model(model_name::AbstractString, N::Integer; seed_names::Vector{String}=["seed"])
     name = String(model_name)
     if name == "DIFF"
-        return ["rho", "sigma", "seed"]
+        return vcat(["rho", "sigma"], seed_names)
     elseif name == "DIFF-R"
-        return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:N], ["sigma", "seed"])
+        return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:N], ["sigma"], seed_names)
     elseif name == "DIFF-RF"
-        return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:N], ["gamma[$i]" for i in 1:N], ["sigma", "seed"])
+        return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:N], ["gamma[$i]" for i in 1:N], ["sigma"], seed_names)
     else
         error("Unknown model name: $model_name")
     end
 end
 
-@model function inference_model(spec::RunSpec, prob::ODEProblem, N::Integer, timepoints::Vector{Float64}, obs_vals::Vector{Float64}, obs_info)
-    priors = default_priors(spec.model.name, N)
-
+@model function inference_model(spec::RunSpec, prob::ODEProblem, N::Integer, timepoints::Vector{Float64}, obs_vals::Vector{Float64}, obs_info, priors)
     if spec.model.name == "DIFF"
         rho ~ priors.rho
         sigma ~ priors.sigma
-        seed ~ priors.seed
+        if length(spec.seeding.seed_indices) == 1
+            seed ~ priors.seed
+            seed_value = seed
+        else
+            seed_values ~ filldist(priors.seed, length(spec.seeding.seed_indices))
+            seed_value = seed_values
+        end
         params = [rho]
     elseif spec.model.name == "DIFF-R"
         rho ~ priors.rho
         alpha ~ priors.alpha
         beta ~ filldist(priors.beta, N)
         sigma ~ priors.sigma
-        seed ~ priors.seed
+        if length(spec.seeding.seed_indices) == 1
+            seed ~ priors.seed
+            seed_value = seed
+        else
+            seed_values ~ filldist(priors.seed, length(spec.seeding.seed_indices))
+            seed_value = seed_values
+        end
         params = vcat([rho, alpha], beta)
     elseif spec.model.name == "DIFF-RF"
         rho ~ priors.rho
@@ -90,7 +181,13 @@ end
         beta ~ filldist(priors.beta, N)
         gamma ~ filldist(priors.gamma, N)
         sigma ~ priors.sigma
-        seed ~ priors.seed
+        if length(spec.seeding.seed_indices) == 1
+            seed ~ priors.seed
+            seed_value = seed
+        else
+            seed_values ~ filldist(priors.seed, length(spec.seeding.seed_indices))
+            seed_value = seed_values
+        end
         params = vcat([rho, alpha], beta, gamma)
     else
         error("Unsupported model in inference_model: $(spec.model.name)")
@@ -99,7 +196,7 @@ end
     predicted = solve(
         prob,
         Tsit5();
-        u0 = initial_conditions_for_spec(spec, N; seed_value = seed),
+        u0 = initial_conditions_for_spec(spec, N; seed_value = seed_value),
         p = collect(params),
         saveat = timepoints,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
@@ -146,8 +243,12 @@ function posterior_mean_parameter_vector(chain::Chains, model_name::AbstractStri
     end
 end
 
-function posterior_mean_seed(chain::Chains)
-    return mean(vec(Array(chain[:seed])))
+function posterior_mean_seed(chain::Chains, spec::RunSpec)
+    names = seed_parameter_names(spec)
+    if length(names) == 1
+        return mean(vec(Array(chain[Symbol(names[1])])))
+    end
+    return [mean(vec(Array(chain[Symbol(name)]))) for name in names]
 end
 
 function write_posterior_hdf5(path::AbstractString, chain::Chains, spec::RunSpec, labels::Vector{String}, timepoints::Vector{Float64})
@@ -173,7 +274,8 @@ function fit_posterior_chain(spec::RunSpec, L::AbstractMatrix, pathology; n_samp
     )
     N = size(L, 1)
     prob = make_ode_problem(spec, Matrix{Float64}(L), ["r$(i)" for i in 1:N], pathology.timepoints)
-    model = inference_model(spec, prob, N, Float64.(pathology.timepoints), obs.values, obs)
+    priors = resolve_priors(spec, N)
+    model = inference_model(spec, prob, N, Float64.(pathology.timepoints), obs.values, obs, priors)
     sampler_name = uppercase(spec.inference.sampler)
     if sampler_name == "NUTS"
         return sample(model, NUTS(spec.inference.n_warmup, spec.inference.target_acceptance; adtype = AutoReverseDiff()), n_samples; progress=progress)
@@ -194,6 +296,7 @@ function resolve_data_paths(spec::RunSpec, config_path::AbstractString)
         seeding = spec.seeding,
         inference = spec.inference,
         holdout = spec.holdout,
+        posterior_priors = _resolve_posterior_prior_spec(spec.posterior_priors, dirname(dirname(config_dir))),
         run_name = spec.run_name,
     )
 end
@@ -220,7 +323,7 @@ function fit_and_save_run(spec::RunSpec; run_root::AbstractString, run_id::Union
     pathology = process_pathology(spec.data.observations; network_csv=spec.data.network)
     chain = fit_posterior_chain(spec, transport.L, pathology; n_samples=spec.inference.n_samples, progress=progress)
     params = posterior_mean_parameter_vector(chain, spec.model.name, length(transport.labels))
-    seed_mean = posterior_mean_seed(chain)
+    seed_mean = posterior_mean_seed(chain, spec)
     pred = simulate_trajectory(spec, transport.L, transport.labels, pathology.timepoints, params; seed_value=seed_mean)
     pred_observed = pred[1:length(transport.labels), :]
 
@@ -235,7 +338,7 @@ function fit_and_save_run(spec::RunSpec; run_root::AbstractString, run_id::Union
     end
     CSV.write(paths.predictions_train_path, pred_df)
 
-    summary = posterior_summary_table(chain, parameter_names_for_model(spec.model.name, length(transport.labels)))
+    summary = posterior_summary_table(chain, parameter_names_for_model(spec.model.name, length(transport.labels); seed_names=seed_parameter_names(spec)))
     CSV.write(paths.posterior_summary_path, summary)
     open(paths.diagnostics_path, "w") do io
         print(io,

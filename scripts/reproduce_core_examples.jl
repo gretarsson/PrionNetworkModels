@@ -62,7 +62,7 @@ end
 function main()
     Random.seed!(7)
 
-    root = "/Users/gretarsson/Desktop/PrionNetworkModels"
+    root = dirname(@__DIR__)
     labels = ["r$(i)" for i in 1:10]
     W = rand(10, 10)
     W = (W + W') ./ 2

@@ -27,7 +27,7 @@ include("diagnostics.jl")
 include("prediction.jl")
 include("plotting.jl")
 
-export ModelSpec, DataSpec, SeedingSpec, InferenceSpec, HoldoutSpec, RunSpec, RunBundlePaths
+export ModelSpec, DataSpec, SeedingSpec, InferenceSpec, HoldoutSpec, PosteriorPriorSpec, RunSpec, RunBundlePaths
 export load_run_spec, resolve_run_id, initialize_run_bundle, portable_run_spec, resolve_bundle_spec_paths
 export spec_to_dict, bundle_paths
 export MODEL_STATE_DIMENSIONS, MODEL_PARAMETER_NAMES, MODEL_REGIONAL_PARAMETER_NAMES

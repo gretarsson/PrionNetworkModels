@@ -34,12 +34,21 @@ Base.@kwdef struct HoldoutSpec
     n::Int = 0
 end
 
+Base.@kwdef struct PosteriorPriorSpec
+    source::Union{Nothing,String} = nothing
+    parameters::Vector{String} = String[]
+    patterns::Vector{String} = String[]
+    widen::Float64 = 2.5
+    min_sd::Float64 = 1e-6
+end
+
 Base.@kwdef struct RunSpec
     model::ModelSpec
     data::DataSpec
     seeding::SeedingSpec
     inference::InferenceSpec = InferenceSpec()
     holdout::HoldoutSpec = HoldoutSpec()
+    posterior_priors::PosteriorPriorSpec = PosteriorPriorSpec()
     run_name::Union{Nothing,String} = nothing
 end
 
@@ -66,6 +75,8 @@ function load_run_spec(path::AbstractString)
     seed_tbl = get(raw, "seeding", Dict{String,Any}())
     inf_tbl = get(raw, "inference", Dict{String,Any}())
     hold_tbl = get(raw, "holdout", Dict{String,Any}())
+    priors_tbl = get(raw, "priors", Dict{String,Any}())
+    posterior_prior_tbl = get(priors_tbl, "posterior", Dict{String,Any}())
 
     model = ModelSpec(
         name = _required_string(model_tbl, "name", path),
@@ -101,12 +112,21 @@ function load_run_spec(path::AbstractString)
         n = get(hold_tbl, "n", 0),
     )
 
+    posterior_priors = PosteriorPriorSpec(
+        source = get(posterior_prior_tbl, "source", nothing),
+        parameters = String.(get(posterior_prior_tbl, "parameters", String[])),
+        patterns = String.(get(posterior_prior_tbl, "patterns", String[])),
+        widen = Float64(get(posterior_prior_tbl, "widen", 2.5)),
+        min_sd = Float64(get(posterior_prior_tbl, "min_sd", 1e-6)),
+    )
+
     return RunSpec(
         model = model,
         data = data,
         seeding = seeding,
         inference = inference,
         holdout = holdout,
+        posterior_priors = posterior_priors,
         run_name = get(raw, "run_name", nothing),
     )
 end
@@ -141,6 +161,17 @@ function spec_to_dict(spec::RunSpec)
             "n" => spec.holdout.n,
         ),
     )
+    if !isnothing(spec.posterior_priors.source)
+        out["priors"] = Dict(
+            "posterior" => Dict(
+                "source" => spec.posterior_priors.source,
+                "parameters" => spec.posterior_priors.parameters,
+                "patterns" => spec.posterior_priors.patterns,
+                "widen" => spec.posterior_priors.widen,
+                "min_sd" => spec.posterior_priors.min_sd,
+            ),
+        )
+    end
     if !isnothing(spec.run_name)
         out["run_name"] = spec.run_name
     end
@@ -159,6 +190,7 @@ function portable_run_spec(spec::RunSpec, run_root::AbstractString)
         seeding = spec.seeding,
         inference = spec.inference,
         holdout = spec.holdout,
+        posterior_priors = _portable_posterior_prior_spec(spec.posterior_priors, project_root),
         run_name = spec.run_name,
     )
 end
@@ -175,7 +207,31 @@ function resolve_bundle_spec_paths(spec::RunSpec, run_dir::AbstractString)
         seeding = spec.seeding,
         inference = spec.inference,
         holdout = spec.holdout,
+        posterior_priors = _resolve_posterior_prior_spec(spec.posterior_priors, project_root),
         run_name = spec.run_name,
+    )
+end
+
+function _portable_posterior_prior_spec(spec::PosteriorPriorSpec, project_root::AbstractString)
+    isnothing(spec.source) && return spec
+    return PosteriorPriorSpec(
+        source = _portable_path(spec.source, project_root),
+        parameters = spec.parameters,
+        patterns = spec.patterns,
+        widen = spec.widen,
+        min_sd = spec.min_sd,
+    )
+end
+
+function _resolve_posterior_prior_spec(spec::PosteriorPriorSpec, project_root::AbstractString)
+    isnothing(spec.source) && return spec
+    source = isabspath(spec.source) ? spec.source : normpath(joinpath(project_root, spec.source))
+    return PosteriorPriorSpec(
+        source = source,
+        parameters = spec.parameters,
+        patterns = spec.patterns,
+        widen = spec.widen,
+        min_sd = spec.min_sd,
     )
 end
 

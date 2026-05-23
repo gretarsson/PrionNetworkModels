@@ -40,6 +40,7 @@ function main()
             seeding = spec.seeding,
             inference = inference,
             holdout = spec.holdout,
+            posterior_priors = spec.posterior_priors,
             run_name = spec.run_name,
         )
     end

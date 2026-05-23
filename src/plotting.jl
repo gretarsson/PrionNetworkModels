@@ -65,6 +65,18 @@ end
 
 is_local_param(name::String) = startswith(name, "beta[") || startswith(name, "gamma[")
 
+function seed_parameter_indices(parameter_names::Vector{String})
+    name_to_idx = Dict(name => idx for (idx, name) in enumerate(parameter_names))
+    seed_index = get(name_to_idx, "seed", 0)
+    if seed_index != 0
+        return [seed_index]
+    end
+
+    indices = findall(name -> startswith(name, "seed_values["), parameter_names)
+    sort!(indices; by = idx -> parameter_names[idx])
+    return indices
+end
+
 function split_local_params(rhats::Dict{String,Float64})
     beta = Dict{String,Float64}()
     gamma = Dict{String,Float64}()
@@ -179,9 +191,9 @@ function chain_fit_metrics(run_dir::AbstractString)
     parameter_indices = [get(name_to_idx, name, 0) for name in parameter_order]
     any(==(0), parameter_indices) && error("Posterior draws are missing required parameters for $(spec.model.name)")
 
-    seed_index = get(name_to_idx, "seed", 0)
+    seed_indices = seed_parameter_indices(param_names)
     sigma_index = get(name_to_idx, "sigma", 0)
-    (seed_index == 0 || sigma_index == 0) && error("Posterior draws are missing seed or sigma parameters")
+    (isempty(seed_indices) || sigma_index == 0) && error("Posterior draws are missing seed or sigma parameters")
 
     ignore_regions = spec.inference.ignore_seed ? spec.seeding.seed_indices : Int[]
     obs_all = finite_observations(pathology.data; mean_data = spec.inference.mean_data, ignore_regions = ignore_regions)
@@ -202,7 +214,8 @@ function chain_fit_metrics(run_dir::AbstractString)
         idxs = findall(==(chain_id), chain_ids)
         chain_mean = vec(mean(samples[idxs, :]; dims = 1))
         params = collect(chain_mean[parameter_indices])
-        seed_value = chain_mean[seed_index]
+        seed_value = chain_mean[seed_indices]
+        seed_report = mean(seed_value)
         sigma = chain_mean[sigma_index]
 
         predicted = simulate_trajectory(spec, transport.L, transport.labels, pathology.timepoints, params; seed_value = seed_value)
@@ -233,7 +246,7 @@ function chain_fit_metrics(run_dir::AbstractString)
         rmse_all = sqrt(mean(residuals .^ 2))
         mae_all = mean(abs.(residuals))
 
-        push!(rows, (chain_id, loglik_all, loglik_seed, rmse_all, mae_all, sigma, seed_value))
+        push!(rows, (chain_id, loglik_all, loglik_seed, rmse_all, mae_all, sigma, seed_report))
     end
 
     return rows
@@ -291,8 +304,8 @@ function plot_seed_region_chain_comparison(output_path::AbstractString, run_dir:
     parameter_indices = [get(name_to_idx, name, 0) for name in parameter_order]
     any(==(0), parameter_indices) && error("Posterior draws are missing required parameters for $(spec.model.name)")
 
-    seed_index = get(name_to_idx, "seed", 0)
-    seed_index == 0 && error("Posterior draws are missing the seed parameter")
+    seed_indices = seed_parameter_indices(param_names)
+    isempty(seed_indices) && error("Posterior draws are missing seed parameters")
 
     summary = summarize_over_replicates(pathology.data)
     seed_regions = spec.seeding.seed_indices
@@ -331,7 +344,7 @@ function plot_seed_region_chain_comparison(output_path::AbstractString, run_dir:
             idxs = findall(==(chain_id), chain_ids)
             chain_mean = vec(mean(samples[idxs, :]; dims = 1))
             params = collect(chain_mean[parameter_indices])
-            seed_value = chain_mean[seed_index]
+            seed_value = chain_mean[seed_indices]
             predicted = simulate_trajectory(spec, transport.L, transport.labels, timepoints, params; seed_value = seed_value)
             pred_obs = predicted[1:n_regions, :]
             plot!(
@@ -391,6 +404,19 @@ function diagnostics_plots(run_dir::AbstractString, output_dir::AbstractString)
     mkpath(output_dir)
 
     posterior = load_posterior_draws(joinpath(run_dir, "posterior.h5"))
+    chain_ids = sort(unique(Int.(posterior.chain_ids)))
+    if length(chain_ids) < 2
+        skip_info = Dict(
+            "status" => "skipped",
+            "reason" => "Convergence diagnostics require at least two chains.",
+            "n_chains" => length(chain_ids),
+        )
+        open(joinpath(output_dir, "diagnostics_skipped.json"), "w") do io
+            print(io, _json(skip_info))
+        end
+        return output_dir
+    end
+
     chain = posterior_chains(posterior)
     summary = compute_summary_stats(chain)
     rhats = compute_rhat_semantic(chain)
@@ -475,15 +501,15 @@ function posterior_mean_retrodiction(run_dir::AbstractString, obs; n_dense::Int=
     parameter_indices = [get(name_to_idx, name, 0) for name in parameter_order]
     any(==(0), parameter_indices) && error("Posterior draws are missing required parameters for $(spec.model.name)")
 
-    seed_index = get(name_to_idx, "seed", 0)
-    seed_index == 0 && error("Posterior draws are missing the seed parameter")
+    seed_indices = seed_parameter_indices(posterior.parameter_names)
+    isempty(seed_indices) && error("Posterior draws are missing seed parameters")
 
     sigma_index = get(name_to_idx, "sigma", 0)
     sigma_index == 0 && error("Posterior draws are missing the sigma parameter")
 
     mean_draw = vec(mean(posterior.samples; dims = 1))
     params = collect(mean_draw[parameter_indices])
-    seed_value = mean_draw[seed_index]
+    seed_value = mean_draw[seed_indices]
     sigma = mean_draw[sigma_index]
 
     max_time = maximum(obs.timepoints)

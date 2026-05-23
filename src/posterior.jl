@@ -29,8 +29,14 @@ end
 
 function posterior_mean_seed(samples::AbstractMatrix, parameter_names::Vector{String})
     idx = findfirst(==("seed"), parameter_names)
-    isnothing(idx) && error("Posterior samples do not contain a seed parameter")
-    return mean(samples[:, idx])
+    if !isnothing(idx)
+        return mean(samples[:, idx])
+    end
+
+    seed_idxs = findall(name -> startswith(name, "seed_values["), parameter_names)
+    isempty(seed_idxs) && error("Posterior samples do not contain seed parameters")
+    sort!(seed_idxs; by = idx -> parameter_names[idx])
+    return [mean(samples[:, idx]) for idx in seed_idxs]
 end
 
 function load_posterior_hdf5(path::AbstractString)
