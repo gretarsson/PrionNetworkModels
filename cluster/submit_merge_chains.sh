@@ -1,46 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -lt 2 ]]; then
-  echo "Usage: submit_inference.sh <config.toml> <run_id> [extra fit_model args...]"
+if [[ $# -lt 1 ]]; then
+  echo "Usage: submit_merge_chains.sh <run_prefix> [out_run_id] [chain_count] [runs_root]" >&2
   exit 1
 fi
 
-CONFIG_PATH="$1"
-RUN_ID="$2"
-shift 2
+RUN_PREFIX="$1"
+OUT_RUN_ID="${2:-$RUN_PREFIX}"
+CHAIN_COUNT="${3:-4}"
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RUNS_ROOT="${4:-$PROJECT_DIR/runs}"
 LOG_DIR="$PROJECT_DIR/logs"
 MARKER_FILE="$PROJECT_DIR/.julia_depot/.prepared_prionnetworkmodels"
 mkdir -p "$LOG_DIR"
 
 if [[ ! -f "$MARKER_FILE" || "$MARKER_FILE" -ot "$PROJECT_DIR/Project.toml" || ( -f "$PROJECT_DIR/Manifest.toml" && "$MARKER_FILE" -ot "$PROJECT_DIR/Manifest.toml" ) ]]; then
-  echo "Preparing Julia environment before submission..."
-  "$PROJECT_DIR/cluster/prepare_julia_env.sh"
+  echo "Preparing Julia environment before merge submission..." >&2
+  "$PROJECT_DIR/cluster/prepare_julia_env.sh" >&2
 fi
 
-JOB_NAME="${RUN_ID}"
-EXTRA_ARGS=("$@")
-EXTRA_ARGS_STR=""
-if [[ ${#EXTRA_ARGS[@]} -gt 0 ]]; then
-  printf -v EXTRA_ARGS_STR ' %q' "${EXTRA_ARGS[@]}"
-fi
-
-SBATCH_ARGS=()
-if [[ -n "${SLURM_DEPENDENCY:-}" ]]; then
-  SBATCH_ARGS+=(--dependency="$SLURM_DEPENDENCY")
-fi
-
-sbatch "${SBATCH_ARGS[@]}" <<EOF
+JOB_NAME="merge_${OUT_RUN_ID}"
+RAW_JOB_ID="$(
+  sbatch --parsable <<EOF
 #!/usr/bin/env bash
 #SBATCH --job-name=$JOB_NAME
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=32G
+#SBATCH --mem=16G
 #SBATCH --partition=all
-#SBATCH --time=2-00:00:00
+#SBATCH --time=04:00:00
 #SBATCH --chdir=$PROJECT_DIR
 #SBATCH --output=$LOG_DIR/${JOB_NAME}-%j.out
 #SBATCH --error=$LOG_DIR/${JOB_NAME}-%j.err
@@ -59,7 +50,14 @@ export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 mkdir -p "$PROJECT_DIR/.julia_depot"
 
-exec julia --project="$PROJECT_DIR" "$PROJECT_DIR/scripts/fit_model.jl" \
-  --config "$CONFIG_PATH" \
-  --run-id "$RUN_ID"$EXTRA_ARGS_STR
+exec julia --project="$PROJECT_DIR" "$PROJECT_DIR/scripts/merge_chains.jl" \
+  --prefix "$RUN_PREFIX" \
+  --out-run-id "$OUT_RUN_ID" \
+  --chain-count "$CHAIN_COUNT" \
+  --runs-root "$RUNS_ROOT"
 EOF
+)"
+JOB_ID="${RAW_JOB_ID%%;*}"
+
+echo "Submitted merge job $JOB_ID for $RUN_PREFIX -> $OUT_RUN_ID" >&2
+echo "$JOB_ID"

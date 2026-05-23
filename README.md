@@ -328,6 +328,12 @@ julia --project=. scripts/merge_chains.jl \
   --out-run-id striatum_DIFF-RF_RETRO
 ```
 
+On CUBIC, prefer submitting the merge as a small batch job so Julia starts in the same clean module environment used by the inference jobs:
+
+```bash
+cluster/submit_merge_chains.sh striatum_DIFF-RF_RETRO striatum_DIFF-RF_RETRO 4
+```
+
 and then plot the merged run with:
 
 ```bash
