@@ -27,12 +27,8 @@ if [[ ${#EXTRA_ARGS[@]} -gt 0 ]]; then
   printf -v EXTRA_ARGS_STR ' %q' "${EXTRA_ARGS[@]}"
 fi
 
-SBATCH_ARGS=()
-if [[ -n "${SLURM_DEPENDENCY:-}" ]]; then
-  SBATCH_ARGS+=(--dependency="$SLURM_DEPENDENCY")
-fi
-
-sbatch "${SBATCH_ARGS[@]}" <<EOF
+submit_job() {
+  sbatch "$@" <<EOF
 #!/usr/bin/env bash
 #SBATCH --job-name=$JOB_NAME
 #SBATCH --nodes=1
@@ -63,3 +59,10 @@ exec julia --project="$PROJECT_DIR" "$PROJECT_DIR/scripts/fit_model.jl" \
   --config "$CONFIG_PATH" \
   --run-id "$RUN_ID"$EXTRA_ARGS_STR
 EOF
+}
+
+if [[ -n "${SLURM_DEPENDENCY:-}" ]]; then
+  submit_job --dependency="$SLURM_DEPENDENCY"
+else
+  submit_job
+fi
