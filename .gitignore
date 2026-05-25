@@ -2,6 +2,8 @@ runs/
 outputs/
 .julia_depot/
 logs/
+paper/python/.venv/
+paper/results/
 .DS_Store
 *.jlso
 *.jld2

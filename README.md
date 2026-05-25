@@ -10,6 +10,11 @@ The current public model names are:
 
 This repository is intentionally separate from the legacy `synuclein_spread` archive so the new workflow can be cleaner, slimmer, and easier for others to use.
 
+The reusable modeling package lives in `src/`, with general command-line helpers in
+`scripts/` and cluster wrappers in `cluster/`. Paper-specific biological analyses
+are isolated in `paper/` so the core package stays useful for future projects and
+students.
+
 ## What The Workflow Looks Like
 
 The intended workflow is:
