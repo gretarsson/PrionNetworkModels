@@ -328,10 +328,45 @@ julia --project=. scripts/merge_chains.jl \
   --out-run-id striatum_DIFF-RF_RETRO
 ```
 
+To merge a selected subset of chains, pass the chain numbers explicitly and give the merged run a name that records the choice:
+
+```bash
+julia --project=. scripts/merge_chains.jl \
+  --prefix hippocampus_DIFF-RF_RETRO \
+  --chains 1,2,3 \
+  --out-run-id hippocampus_DIFF-RF_RETRO_C1_C2_C3
+```
+
+This is the preferred pattern when diagnostics show that one chain landed in a different posterior mode or has a clearly lower likelihood. Keep the all-chain merge for diagnostics, then create a separate selected-chain analysis bundle for paper figures. Each merged bundle writes `source_chains.csv` so the chain provenance is explicit.
+
+To keep the top-level `runs/` directory tidy after a merge, source chain directories can be archived under `runs/_source_chains/<merged_run_id>/`:
+
+```bash
+julia --project=. scripts/merge_chains.jl \
+  --prefix hippocampus_DIFF-RF_RETRO \
+  --chains 1,2,3 \
+  --out-run-id hippocampus_DIFF-RF_RETRO_C1_C2_C3 \
+  --archive-source-chains
+```
+
 On CUBIC, prefer submitting the merge as a small batch job so Julia starts in the same clean module environment used by the inference jobs:
 
 ```bash
 cluster/submit_merge_chains.sh striatum_DIFF-RF_RETRO striatum_DIFF-RF_RETRO 4
+```
+
+Selected-chain merges can also be submitted through SLURM:
+
+```bash
+MERGE_CHAINS=1,2,3 \
+cluster/submit_merge_chains.sh hippocampus_DIFF-RF_RETRO hippocampus_DIFF-RF_RETRO_C1_C2_C3
+```
+
+To archive source chain directories as part of the cluster merge:
+
+```bash
+MERGE_CHAINS=1,2,3 ARCHIVE_SOURCE_CHAINS=1 \
+cluster/submit_merge_chains.sh hippocampus_DIFF-RF_RETRO hippocampus_DIFF-RF_RETRO_C1_C2_C3
 ```
 
 and then plot the merged run with:
