@@ -26,6 +26,8 @@ EXTRA_ARGS_STR=""
 if [[ ${#EXTRA_ARGS[@]} -gt 0 ]]; then
   printf -v EXTRA_ARGS_STR ' %q' "${EXTRA_ARGS[@]}"
 fi
+SBATCH_PARTITION="${SLURM_PARTITION:-all}"
+SBATCH_TIME="${SLURM_TIME:-2-00:00:00}"
 
 submit_job() {
   sbatch "$@" <<EOF
@@ -35,8 +37,8 @@ submit_job() {
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=32G
-#SBATCH --partition=all
-#SBATCH --time=2-00:00:00
+#SBATCH --partition=$SBATCH_PARTITION
+#SBATCH --time=$SBATCH_TIME
 #SBATCH --chdir=$PROJECT_DIR
 #SBATCH --output=$LOG_DIR/${JOB_NAME}-%j.out
 #SBATCH --error=$LOG_DIR/${JOB_NAME}-%j.err

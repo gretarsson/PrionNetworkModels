@@ -283,9 +283,18 @@ The hippocampus configs are:
 
 These use the legacy hippocampus seed indices `[53, 55, 56]`, corresponding to `iCA1`, `iCA3`, and `iDG`. They fit raw replicate observations by default, matching the striatum configs.
 
-To submit only the hippocampus `DIFF-RF` retrograde jobs, including the posterior-prior variant that borrows striatum global parameters:
+To submit the hippocampus posterior-prior `DIFF-RF` retrograde jobs that borrow striatum global parameters:
 
 ```bash
+scripts/run_hippocampus_inferences.sh
+```
+
+By default this submits six posterior-prior chains to the `long` partition with a five-day wall time. You can override those choices without editing the script:
+
+```bash
+POSTERIOR_CHAINS=8 \
+SLURM_PARTITION=long \
+SLURM_TIME=5-00:00:00 \
 scripts/run_hippocampus_inferences.sh
 ```
 
