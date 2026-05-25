@@ -38,8 +38,8 @@ julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
   --out-dir paper/results/parameters/striatum_diff_rf
 
 julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
-  --run runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_partial_C1_C4 \
-  --out-dir paper/results/parameters/hippocampus_diff_rf_striatum_global_priors
+  --run runs/hippocampus_DIFF-RF_RETRO_C1_C2_C3 \
+  --out-dir paper/results/parameters/hippocampus_diff_rf
 ```
 
 Then create gene-parameter PCA outputs:
@@ -53,8 +53,8 @@ python paper/analyses/transcriptomics/gene_parameter_pca.py \
 
 python paper/analyses/transcriptomics/gene_parameter_pca.py \
   --expression paper/data/transcriptomics/avg_Pangea_exp.csv \
-  --beta paper/results/parameters/hippocampus_diff_rf_striatum_global_priors/beta.csv \
-  --gamma paper/results/parameters/hippocampus_diff_rf_striatum_global_priors/gamma.csv \
+  --beta paper/results/parameters/hippocampus_diff_rf/beta.csv \
+  --gamma paper/results/parameters/hippocampus_diff_rf/gamma.csv \
   --out-dir paper/results/transcriptomics/hippocampus
 ```
 

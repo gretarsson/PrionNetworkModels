@@ -19,7 +19,7 @@ fi
 cd "$PROJECT_DIR"
 
 STRIATUM_RUN="${STRIATUM_RUN:-runs/striatum_DIFF-RF_RETRO_C1_C3_C4}"
-HIPPO_RUN="${HIPPO_RUN:-runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_partial_C1_C4}"
+HIPPO_RUN="${HIPPO_RUN:-runs/hippocampus_DIFF-RF_RETRO_C1_C2_C3}"
 
 julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
   --run "$STRIATUM_RUN" \
@@ -27,7 +27,7 @@ julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
 
 julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
   --run "$HIPPO_RUN" \
-  --out-dir paper/results/parameters/hippocampus_diff_rf_striatum_global_priors
+  --out-dir paper/results/parameters/hippocampus_diff_rf
 
 "$PYTHON" paper/analyses/transcriptomics/gene_parameter_pca.py \
   --expression paper/data/transcriptomics/avg_Pangea_exp.csv \
@@ -37,8 +37,8 @@ julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
 
 "$PYTHON" paper/analyses/transcriptomics/gene_parameter_pca.py \
   --expression paper/data/transcriptomics/avg_Pangea_exp.csv \
-  --beta paper/results/parameters/hippocampus_diff_rf_striatum_global_priors/beta.csv \
-  --gamma paper/results/parameters/hippocampus_diff_rf_striatum_global_priors/gamma.csv \
+  --beta paper/results/parameters/hippocampus_diff_rf/beta.csv \
+  --gamma paper/results/parameters/hippocampus_diff_rf/gamma.csv \
   --out-dir paper/results/transcriptomics/hippocampus
 
 "$PYTHON" paper/analyses/transcriptomics/compare_axes.py \

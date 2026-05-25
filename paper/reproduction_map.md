@@ -38,8 +38,8 @@ The current working paper choices are:
 | Dataset | Run bundle | Notes |
 | --- | --- | --- |
 | Striatum DIFF-RF | `runs/striatum_DIFF-RF_RETRO_C1_C3_C4` | Selected chains 1, 3, 4; chain 2 excluded based on lower/different mode |
-| Hippocampus DIFF-RF | `runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_partial_C1_C4` | Partial posterior-prior merge until remaining chains are available |
-| Hippocampus normal DIFF-RF | `runs/hippocampus_DIFF-RF_RETRO_C1_C2_C3` | Useful comparison run, not the manuscript posterior-prior configuration |
+| Hippocampus DIFF-RF | `runs/hippocampus_DIFF-RF_RETRO_C1_C2_C3` | Selected normal hippocampus DIFF-RF merge |
+| Hippocampus posterior-prior DIFF-RF | `runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_partial_C1_C4` | Useful comparison run using striatal global posterior priors |
 
 ## Porting Status
 
