@@ -223,7 +223,7 @@ end
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
         abstol = 1e-6,
         reltol = 1e-3,
-        maxiters = 6000,
+        maxiters = 100_000,
     )
     pred = Array(predicted)[1:N, :]
     pred_vec = if obs_info.mean_data
