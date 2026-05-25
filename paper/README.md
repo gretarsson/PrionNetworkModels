@@ -38,7 +38,7 @@ julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
   --out-dir paper/results/parameters/striatum_diff_rf
 
 julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
-  --run runs/hippocampus_DIFF-RF_RETRO_C1_C2_C3 \
+  --run runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_partial_C1_C4 \
   --out-dir paper/results/parameters/hippocampus_diff_rf
 ```
 
@@ -114,6 +114,10 @@ To also regenerate full KEGG/GSEA outputs before plotting, run:
 ```bash
 RUN_GSEA=1 bash paper/run_paper_analyses.sh
 ```
+
+By default, the hippocampus analysis uses the DIFF-RF run initialized with
+striatal posterior-derived priors for global parameters (`rho`, `alpha`, and
+`sigma`). To use the normal hippocampus merge instead, override `HIPPO_RUN`.
 
 Generated tables are written under `paper/results/`, and generated figures are
 written under `paper/figures/`. Both directories are ignored by git.

@@ -19,7 +19,7 @@ fi
 cd "$PROJECT_DIR"
 
 STRIATUM_RUN="${STRIATUM_RUN:-runs/striatum_DIFF-RF_RETRO_C1_C3_C4}"
-HIPPO_RUN="${HIPPO_RUN:-runs/hippocampus_DIFF-RF_RETRO_C1_C2_C3}"
+HIPPO_RUN="${HIPPO_RUN:-runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_partial_C1_C4}"
 
 STRIATUM_PARAMS="paper/results/parameters/striatum_diff_rf"
 HIPPO_PARAMS="paper/results/parameters/hippocampus_diff_rf"

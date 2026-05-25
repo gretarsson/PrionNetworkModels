@@ -167,12 +167,12 @@ def main() -> None:
     coefs.to_csv(out_dir / "gene_parameter_coefficients.csv", index=False)
     corrs.to_csv(out_dir / "gene_eta_correlations.csv", index=False)
     pd.DataFrame({
-        "component": ["PC1"],
-        "loading_beta": [pc1[0]],
-        "loading_gamma": [pc1[1]],
-        "explained_variance_ratio": [pca.explained_variance_ratio_[0]],
-        "n_regions": [len(merged)],
-        "n_genes": [len(coefs)],
+        "component": ["PC1", "PC2"],
+        "loading_beta": [pc1[0], pca.components_[1, 0]],
+        "loading_gamma": [pc1[1], pca.components_[1, 1]],
+        "explained_variance_ratio": pca.explained_variance_ratio_,
+        "n_regions": [len(merged), len(merged)],
+        "n_genes": [len(coefs), len(coefs)],
     }).to_csv(out_dir / "pca_summary.csv", index=False)
 
     print(out_dir)

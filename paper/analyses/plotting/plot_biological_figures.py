@@ -12,6 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.stats import fisher_exact
+from sklearn.decomposition import PCA
 
 
 CATEGORY_ORDER = [
@@ -113,17 +114,34 @@ def load_gsea(path: Path) -> pd.DataFrame:
 def plot_pca_coefficients(result_dir: Path, out_dir: Path, label: str) -> None:
     coefs = pd.read_csv(result_dir / "gene_parameter_coefficients.csv")
     corr = pd.read_csv(result_dir / "gene_eta_correlations.csv")[["gene", "r"]]
-    pca = pd.read_csv(result_dir / "pca_summary.csv").iloc[0]
+    pca_summary = pd.read_csv(result_dir / "pca_summary.csv")
+    pc1 = pca_summary.iloc[0]
+    pca_fit = PCA(n_components=2).fit(coefs[["coef_beta", "coef_gamma"]].to_numpy())
+    if pca_fit.components_[0, 1] < 0:
+        pca_fit.components_[0, :] *= -1
+    pc2 = pca_fit.components_[1, :]
+    pc2_var = pca_fit.explained_variance_ratio_[1]
     df = coefs.merge(corr, on="gene", how="left")
     fig, ax = plt.subplots(figsize=(4.2, 3.8))
     sc = ax.scatter(df["coef_beta"], df["coef_gamma"], c=df["r"], cmap="coolwarm", s=5, alpha=0.65, rasterized=True)
     scale = max(df["coef_beta"].abs().quantile(0.995), df["coef_gamma"].abs().quantile(0.995))
-    ax.plot([0, pca["loading_beta"] * scale], [0, pca["loading_gamma"] * scale], color="black", lw=2.0)
+    ax.plot([0, pc1["loading_beta"] * scale], [0, pc1["loading_gamma"] * scale], color="black", lw=2.0)
+    ax.plot([0, pc2[0] * scale], [0, pc2[1] * scale], color="0.35", lw=1.5, ls="--")
     ax.axhline(0, color="0.75", lw=0.7)
     ax.axvline(0, color="0.75", lw=0.7)
     ax.set_xlabel(r"coefficient for $z(\beta)$")
     ax.set_ylabel(r"coefficient for $z(\gamma)$")
     ax.set_title(f"{label}: gene coefficient PCA")
+    ax.text(
+        0.04,
+        0.96,
+        f"PC1: {100 * pc1['explained_variance_ratio']:.1f}%\nPC2: {100 * pc2_var:.1f}%",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=9,
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.72, "pad": 2.5},
+    )
     cbar = fig.colorbar(sc, ax=ax, pad=0.02)
     cbar.set_label(r"corr(gene, $\eta$)")
     style_axis(ax)
