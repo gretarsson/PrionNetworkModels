@@ -236,6 +236,12 @@ For the uncoupled local rise-and-fall model:
 julia --project=. scripts/smoke_fit_local_rf.jl
 ```
 
+For a tiny four-chain `LOCAL-RF` smoke test that also merges chains and plots diagnostics:
+
+```bash
+scripts/smoke_fit_local_rf_multichain.sh
+```
+
 Option B: use the generic runner
 
 ```bash

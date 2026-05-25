@@ -63,7 +63,7 @@ function chains_long_df(chain::Chains)
     return DataFrame(iteration = iterations, chain = chain_ids, parameter = parameter_names, value = values)
 end
 
-is_local_param(name::String) = startswith(name, "beta[") || startswith(name, "gamma[")
+is_local_param(name::String) = startswith(name, "beta[") || startswith(name, "gamma[") || startswith(name, "u0[")
 
 function seed_parameter_indices(parameter_names::Vector{String})
     name_to_idx = Dict(name => idx for (idx, name) in enumerate(parameter_names))
@@ -85,14 +85,17 @@ end
 function split_local_params(rhats::Dict{String,Float64})
     beta = Dict{String,Float64}()
     gamma = Dict{String,Float64}()
+    u0 = Dict{String,Float64}()
     for (name, val) in rhats
         if startswith(name, "beta[")
             beta[name] = val
         elseif startswith(name, "gamma[")
             gamma[name] = val
+        elseif startswith(name, "u0[")
+            u0[name] = val
         end
     end
-    return beta, gamma
+    return beta, gamma, u0
 end
 
 function compute_rhat_semantic(chain::Chains)
@@ -122,6 +125,8 @@ function top_problem_parameters(summary::DataFrame; top_k_local::Int=12)
             "beta"
         elseif startswith(name, "gamma[")
             "gamma"
+        elseif startswith(name, "u0[")
+            "u0"
         else
             "global"
         end
@@ -427,11 +432,12 @@ function diagnostics_plots(run_dir::AbstractString, output_dir::AbstractString)
     rhats = compute_rhat_semantic(chain)
 
     global_rhats = Dict(name => val for (name, val) in rhats if !is_local_param(name))
-    beta_rhats, gamma_rhats = split_local_params(rhats)
+    beta_rhats, gamma_rhats, u0_rhats = split_local_params(rhats)
 
     plot_rhat_scatter(joinpath(output_dir, "global_rhat.pdf"), global_rhats; title = "Global Parameters")
     isempty(beta_rhats) || plot_rhat_scatter(joinpath(output_dir, "beta_rhat.pdf"), beta_rhats; title = "Beta Parameters")
     isempty(gamma_rhats) || plot_rhat_scatter(joinpath(output_dir, "gamma_rhat.pdf"), gamma_rhats; title = "Gamma Parameters")
+    isempty(u0_rhats) || plot_rhat_scatter(joinpath(output_dir, "u0_rhat.pdf"), u0_rhats; title = "Initial Conditions")
 
     names = String[]
     families = String[]
@@ -444,6 +450,9 @@ function diagnostics_plots(run_dir::AbstractString, output_dir::AbstractString)
     end
     for (name, val) in sort(collect(gamma_rhats); by = first)
         push!(names, name); push!(families, "gamma"); push!(values, val)
+    end
+    for (name, val) in sort(collect(u0_rhats); by = first)
+        push!(names, name); push!(families, "u0"); push!(values, val)
     end
     CSV.write(joinpath(output_dir, "rhat_summary.csv"), DataFrame(parameter = names, family = families, rhat = values))
 
