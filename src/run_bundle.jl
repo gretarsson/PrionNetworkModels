@@ -17,6 +17,8 @@ end
 Base.@kwdef struct SeedingSpec
     seed_indices::Vector{Int}
     infer_seed::Bool = true
+    infer_local_u0::Bool = true
+    local_u0_value::Float64 = 3.364e-5
 end
 
 Base.@kwdef struct InferenceSpec
@@ -95,6 +97,8 @@ function load_run_spec(path::AbstractString)
     seeding = SeedingSpec(
         seed_indices = Int.(seeds_raw),
         infer_seed = get(seed_tbl, "infer_seed", true),
+        infer_local_u0 = get(seed_tbl, "infer_local_u0", true),
+        local_u0_value = Float64(get(seed_tbl, "local_u0_value", 3.364e-5)),
     )
 
     inference = InferenceSpec(
@@ -146,6 +150,8 @@ function spec_to_dict(spec::RunSpec)
         "seeding" => Dict(
             "seed_indices" => spec.seeding.seed_indices,
             "infer_seed" => spec.seeding.infer_seed,
+            "infer_local_u0" => spec.seeding.infer_local_u0,
+            "local_u0_value" => spec.seeding.local_u0_value,
         ),
         "inference" => Dict(
             "n_chains" => spec.inference.n_chains,

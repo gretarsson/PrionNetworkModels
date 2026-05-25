@@ -1,0 +1,26 @@
+[model]
+name = "LOCAL-RF"
+transport = "retrograde"
+parameter_sharing = "independent"
+
+[data]
+network = "paper-copath/data/network.csv"
+observations = "paper-copath/data/tau_pathology_app.csv"
+region_label_style = "allen_mouse_ccfv3"
+
+[seeding]
+seed_indices = [54]
+infer_seed = false
+infer_local_u0 = false
+
+[inference]
+n_chains = 1
+target_acceptance = 0.65
+sampler = "NUTS"
+n_samples = 1000
+n_warmup = 1000
+mean_data = false
+ignore_seed = false
+
+[holdout]
+strategy = "none"

@@ -1,0 +1,11 @@
+statistic,value
+timepoint_months,0.1
+n_regions_finite,354.0
+n_regions_nonzero,97.0
+mean,3.36400397834275e-5
+median,0.0
+nonzero_mean,0.00012276880498281786
+nonzero_median,2.705e-5
+min,0.0
+max,0.00177555475
+fraction_zero,0.7259887005649718

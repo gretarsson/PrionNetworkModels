@@ -82,6 +82,15 @@ function seed_parameter_indices(parameter_names::Vector{String})
     return indices
 end
 
+function initial_condition_for_draw(spec::RunSpec, pathology, n_regions::Integer, parameter_names::Vector{String}, draw::AbstractVector{<:Real})
+    seed_indices = seed_parameter_indices(parameter_names)
+    if spec.model.name == "LOCAL-RF" && !spec.seeding.infer_local_u0
+        return local_initial_condition_vector(spec, pathology, n_regions)
+    end
+    isempty(seed_indices) && error("Posterior draws are missing seed parameters")
+    return collect(draw[seed_indices])
+end
+
 function split_local_params(rhats::Dict{String,Float64})
     beta = Dict{String,Float64}()
     gamma = Dict{String,Float64}()
@@ -201,9 +210,8 @@ function chain_fit_metrics(run_dir::AbstractString)
     parameter_indices = [get(name_to_idx, name, 0) for name in parameter_order]
     any(==(0), parameter_indices) && error("Posterior draws are missing required parameters for $(spec.model.name)")
 
-    seed_indices = seed_parameter_indices(param_names)
     sigma_index = get(name_to_idx, "sigma", 0)
-    (isempty(seed_indices) || sigma_index == 0) && error("Posterior draws are missing seed or sigma parameters")
+    sigma_index == 0 && error("Posterior draws are missing sigma parameters")
 
     ignore_regions = spec.inference.ignore_seed ? spec.seeding.seed_indices : Int[]
     obs_all = finite_observations(pathology.data; mean_data = spec.inference.mean_data, ignore_regions = ignore_regions)
@@ -224,7 +232,7 @@ function chain_fit_metrics(run_dir::AbstractString)
         idxs = findall(==(chain_id), chain_ids)
         chain_mean = vec(mean(samples[idxs, :]; dims = 1))
         params = collect(chain_mean[parameter_indices])
-        seed_value = chain_mean[seed_indices]
+        seed_value = initial_condition_for_draw(spec, pathology, n_regions, param_names, chain_mean)
         seed_report = mean(seed_value)
         sigma = chain_mean[sigma_index]
 
@@ -314,9 +322,6 @@ function plot_seed_region_chain_comparison(output_path::AbstractString, run_dir:
     parameter_indices = [get(name_to_idx, name, 0) for name in parameter_order]
     any(==(0), parameter_indices) && error("Posterior draws are missing required parameters for $(spec.model.name)")
 
-    seed_indices = seed_parameter_indices(param_names)
-    isempty(seed_indices) && error("Posterior draws are missing seed parameters")
-
     summary = summarize_over_replicates(pathology.data)
     seed_regions = spec.seeding.seed_indices
     seed_labels = pathology.labels[seed_regions]
@@ -354,7 +359,7 @@ function plot_seed_region_chain_comparison(output_path::AbstractString, run_dir:
             idxs = findall(==(chain_id), chain_ids)
             chain_mean = vec(mean(samples[idxs, :]; dims = 1))
             params = collect(chain_mean[parameter_indices])
-            seed_value = chain_mean[seed_indices]
+            seed_value = initial_condition_for_draw(spec, pathology, n_regions, param_names, chain_mean)
             predicted = simulate_trajectory(spec, transport.L, transport.labels, timepoints, params; seed_value = seed_value)
             pred_obs = predicted[1:n_regions, :]
             plot!(
@@ -517,15 +522,13 @@ function posterior_mean_retrodiction(run_dir::AbstractString, obs; n_dense::Int=
     parameter_indices = [get(name_to_idx, name, 0) for name in parameter_order]
     any(==(0), parameter_indices) && error("Posterior draws are missing required parameters for $(spec.model.name)")
 
-    seed_indices = seed_parameter_indices(posterior.parameter_names)
-    isempty(seed_indices) && error("Posterior draws are missing seed parameters")
-
     sigma_index = get(name_to_idx, "sigma", 0)
     sigma_index == 0 && error("Posterior draws are missing the sigma parameter")
 
     mean_draw = vec(mean(posterior.samples; dims = 1))
     params = collect(mean_draw[parameter_indices])
-    seed_value = mean_draw[seed_indices]
+    pathology = process_pathology(spec.data.observations; network_csv = spec.data.network)
+    seed_value = initial_condition_for_draw(spec, pathology, length(obs.labels), posterior.parameter_names, mean_draw)
     sigma = mean_draw[sigma_index]
 
     max_time = maximum(obs.timepoints)

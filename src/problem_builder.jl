@@ -27,6 +27,14 @@ function initial_conditions_for_spec(spec::RunSpec, N::Integer; seed_value=1.0, 
     return u0
 end
 
+function local_initial_condition_vector(spec::RunSpec, pathology, N::Integer)
+    spec.model.name == "LOCAL-RF" || error("Local initial conditions are only defined for LOCAL-RF")
+    if spec.seeding.infer_local_u0
+        error("LOCAL-RF uses inferred initial conditions for this spec")
+    end
+    return fill(spec.seeding.local_u0_value, N)
+end
+
 function simulate_trajectory(spec::RunSpec, L::AbstractMatrix, labels::Vector{String}, timepoints::AbstractVector{<:Real}, params::AbstractVector{<:Real}; seed_value=1.0)
     N = size(L, 1)
     seed_values = seed_value isa AbstractVector ? collect(seed_value) : [seed_value]

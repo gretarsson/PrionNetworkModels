@@ -96,7 +96,9 @@ function merge_chain_runs(run_dirs::Vector{String}; merged_run_root::AbstractStr
     transport = build_transport_operator(first_spec.data.network; transport = first_spec.model.transport)
     pathology = process_pathology(first_spec.data.observations; network_csv = first_spec.data.network)
     params = posterior_mean_parameter_vector(samples, parameter_names, first_spec.model.name, length(transport.labels))
-    seed_mean = posterior_mean_seed(samples, parameter_names)
+    seed_mean = first_spec.model.name == "LOCAL-RF" && !first_spec.seeding.infer_local_u0 ?
+        local_initial_condition_vector(first_spec, pathology, length(transport.labels)) :
+        posterior_mean_seed(samples, parameter_names)
     pred = simulate_trajectory(first_spec, transport.L, transport.labels, pathology.timepoints, params; seed_value = seed_mean)
     pred_observed = pred[1:length(transport.labels), :]
 

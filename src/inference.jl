@@ -145,7 +145,7 @@ function seed_parameter_names(spec::RunSpec)
     return n_seeds == 1 ? ["seed"] : ["seed_values[$i]" for i in 1:n_seeds]
 end
 
-function parameter_names_for_model(model_name::AbstractString, N::Integer; seed_names::Vector{String}=["seed"])
+function parameter_names_for_model(model_name::AbstractString, N::Integer; seed_names::Vector{String}=["seed"], infer_local_u0::Bool=true)
     name = String(model_name)
     if name == "DIFF"
         return vcat(["rho", "sigma"], seed_names)
@@ -154,13 +154,18 @@ function parameter_names_for_model(model_name::AbstractString, N::Integer; seed_
     elseif name == "DIFF-RF"
         return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:N], ["gamma[$i]" for i in 1:N], ["sigma"], seed_names)
     elseif name == "LOCAL-RF"
-        return vcat(["alpha"], ["beta[$i]" for i in 1:N], ["gamma[$i]" for i in 1:N], ["u0[$i]" for i in 1:N], ["sigma"])
+        names = vcat(["alpha"], ["beta[$i]" for i in 1:N], ["gamma[$i]" for i in 1:N])
+        if infer_local_u0
+            append!(names, ["u0[$i]" for i in 1:N])
+        end
+        push!(names, "sigma")
+        return names
     else
         error("Unknown model name: $model_name")
     end
 end
 
-@model function inference_model(spec::RunSpec, prob::ODEProblem, N::Integer, timepoints::Vector{Float64}, obs_vals::Vector{Float64}, obs_info, priors)
+@model function inference_model(spec::RunSpec, prob::ODEProblem, N::Integer, timepoints::Vector{Float64}, obs_vals::Vector{Float64}, obs_info, priors, local_u0_fixed)
     if spec.model.name == "DIFF"
         rho ~ priors.rho
         sigma ~ priors.sigma
@@ -203,7 +208,12 @@ end
         alpha ~ priors.alpha
         beta ~ filldist(priors.beta, N)
         gamma ~ filldist(priors.gamma, N)
-        u0 ~ filldist(priors.u0, N)
+        if spec.seeding.infer_local_u0
+            u0 ~ filldist(priors.u0, N)
+            local_u0 = u0
+        else
+            local_u0 = local_u0_fixed
+        end
         sigma ~ priors.sigma
         params = vcat([alpha], beta, gamma)
     else
@@ -211,7 +221,7 @@ end
     end
 
     state0 = spec.model.name == "LOCAL-RF" ?
-        initial_conditions_for_spec(spec, N; local_u0 = u0) :
+        initial_conditions_for_spec(spec, N; local_u0 = local_u0) :
         initial_conditions_for_spec(spec, N; seed_value = seed_value)
 
     predicted = solve(
@@ -270,6 +280,7 @@ end
 
 function posterior_mean_seed(chain::Chains, spec::RunSpec)
     if spec.model.name == "LOCAL-RF"
+        spec.seeding.infer_local_u0 || error("LOCAL-RF spec uses deterministic local initial conditions")
         u0_names = sort(
             [String(name) for name in names(chain, :parameters) if startswith(String(name), "u0[")];
             by = name -> parse(Int, match(r"u0\[(\d+)\]", name).captures[1]),
@@ -307,7 +318,10 @@ function fit_posterior_chain(spec::RunSpec, L::AbstractMatrix, pathology; n_samp
     N = size(L, 1)
     prob = make_ode_problem(spec, Matrix{Float64}(L), ["r$(i)" for i in 1:N], pathology.timepoints)
     priors = resolve_priors(spec, N)
-    model = inference_model(spec, prob, N, Float64.(pathology.timepoints), obs.values, obs, priors)
+    local_u0_fixed = spec.model.name == "LOCAL-RF" && !spec.seeding.infer_local_u0 ?
+        local_initial_condition_vector(spec, pathology, N) :
+        Float64[]
+    model = inference_model(spec, prob, N, Float64.(pathology.timepoints), obs.values, obs, priors, local_u0_fixed)
     sampler_name = uppercase(spec.inference.sampler)
     if sampler_name == "NUTS"
         return sample(model, NUTS(spec.inference.n_warmup, spec.inference.target_acceptance; adtype = AutoReverseDiff()), n_samples; progress=progress)
@@ -361,7 +375,9 @@ function fit_and_save_run(spec::RunSpec; run_root::AbstractString, run_id::Union
     pathology = process_pathology(spec.data.observations; network_csv=spec.data.network)
     chain = fit_posterior_chain(spec, transport.L, pathology; n_samples=spec.inference.n_samples, progress=progress)
     params = posterior_mean_parameter_vector(chain, spec.model.name, length(transport.labels))
-    seed_mean = posterior_mean_seed(chain, spec)
+    seed_mean = spec.model.name == "LOCAL-RF" && !spec.seeding.infer_local_u0 ?
+        local_initial_condition_vector(spec, pathology, length(transport.labels)) :
+        posterior_mean_seed(chain, spec)
     pred = simulate_trajectory(spec, transport.L, transport.labels, pathology.timepoints, params; seed_value=seed_mean)
     pred_observed = pred[1:length(transport.labels), :]
 
@@ -376,7 +392,15 @@ function fit_and_save_run(spec::RunSpec; run_root::AbstractString, run_id::Union
     end
     CSV.write(paths.predictions_train_path, pred_df)
 
-    summary = posterior_summary_table(chain, parameter_names_for_model(spec.model.name, length(transport.labels); seed_names=seed_parameter_names(spec)))
+    summary = posterior_summary_table(
+        chain,
+        parameter_names_for_model(
+            spec.model.name,
+            length(transport.labels);
+            seed_names=seed_parameter_names(spec),
+            infer_local_u0=spec.seeding.infer_local_u0,
+        ),
+    )
     CSV.write(paths.posterior_summary_path, summary)
     open(paths.diagnostics_path, "w") do io
         print(io,

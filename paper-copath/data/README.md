@@ -24,3 +24,7 @@ define region order and to subset the wider 564-column pathology tables.
 
 These inputs are intentionally kept under `paper-copath/data/`, separate from
 the rise-and-fall paper inputs in `paper-rf/data/`.
+
+The deterministic `LOCAL-RF` initial-condition test uses `u0 = 3.364e-5`,
+the all-region mean pathology at the first striatum timepoint from
+`paper-rf/data/striatum/observations.csv`.
