@@ -196,7 +196,7 @@ function portable_run_spec(spec::RunSpec, run_root::AbstractString)
 end
 
 function resolve_bundle_spec_paths(spec::RunSpec, run_dir::AbstractString)
-    project_root = dirname(dirname(abspath(run_dir)))
+    project_root = _find_project_root(run_dir)
     return RunSpec(
         model = spec.model,
         data = DataSpec(
@@ -210,6 +210,20 @@ function resolve_bundle_spec_paths(spec::RunSpec, run_dir::AbstractString)
         posterior_priors = _resolve_posterior_prior_spec(spec.posterior_priors, project_root),
         run_name = spec.run_name,
     )
+end
+
+function _find_project_root(path::AbstractString)
+    current = abspath(path)
+    if isfile(current)
+        current = dirname(current)
+    end
+    while true
+        isfile(joinpath(current, "Project.toml")) && return current
+        parent = dirname(current)
+        parent == current && break
+        current = parent
+    end
+    return dirname(dirname(abspath(path)))
 end
 
 function _portable_posterior_prior_spec(spec::PosteriorPriorSpec, project_root::AbstractString)

@@ -41,6 +41,15 @@ function archive_source_chains!(rows; archive_root::AbstractString)
     return archived_rows
 end
 
+function chain_run_dir(runs_root::AbstractString, prefix::AbstractString, chain::Integer)
+    run_id = "$(prefix)_C$(chain)"
+    direct = joinpath(runs_root, run_id)
+    isdir(direct) && return direct
+    archived = joinpath(runs_root, "_source_chains", prefix, run_id)
+    isdir(archived) && return archived
+    return direct
+end
+
 function main()
     root = dirname(@__DIR__)
     runs_root = get_arg("--runs-root", joinpath(root, "runs"))
@@ -61,7 +70,7 @@ function main()
         chain_labels = collect(1:length(run_dirs))
     elseif !isnothing(chains_arg)
         chain_labels = parse_chain_ids(chains_arg)
-        run_dirs = [joinpath(runs_root, "$(prefix)_C$(i)") for i in chain_labels]
+        run_dirs = [chain_run_dir(runs_root, prefix, i) for i in chain_labels]
     else
         chain_labels = collect(1:chain_count)
         run_dirs = [joinpath(runs_root, "$(prefix)_C$(i)") for i in chain_labels]
