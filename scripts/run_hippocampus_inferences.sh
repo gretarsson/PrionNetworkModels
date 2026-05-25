@@ -7,7 +7,7 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 POSTERIOR_JOBNAME="hippocampus_DIFF-RF_RETRO_striatum-global-priors"
 POSTERIOR_CONFIG="configs/paper/hippocampus_diff_rf_striatum_global_priors.toml"
-POSTERIOR_CHAINS="${POSTERIOR_CHAINS:-6}"
+POSTERIOR_CHAINS="${POSTERIOR_CHAINS:-4}"
 SLURM_PARTITION="${SLURM_PARTITION:-long}"
 SLURM_TIME="${SLURM_TIME:-5-00:00:00}"
 export SLURM_PARTITION SLURM_TIME

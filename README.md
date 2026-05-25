@@ -289,7 +289,7 @@ To submit the hippocampus posterior-prior `DIFF-RF` retrograde jobs that borrow 
 scripts/run_hippocampus_inferences.sh
 ```
 
-By default this submits six posterior-prior chains to the `long` partition with a five-day wall time. You can override those choices without editing the script:
+By default this submits four posterior-prior chains to the `long` partition with a five-day wall time. You can override those choices without editing the script:
 
 ```bash
 POSTERIOR_CHAINS=8 \
