@@ -46,6 +46,16 @@ julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
   --hippocampus-dir paper/results/transcriptomics/hippocampus \
   --out-dir paper/results/transcriptomics/striatum_vs_hippocampus
 
+if [[ "${RUN_GSEA:-0}" == "1" ]]; then
+  "$PYTHON" paper/analyses/transcriptomics/run_gsea.py \
+    --input paper/results/transcriptomics/striatum/gene_eta_correlations.csv \
+    --out-dir paper/results/enrichment/striatum
+
+  "$PYTHON" paper/analyses/transcriptomics/run_gsea.py \
+    --input paper/results/transcriptomics/hippocampus/gene_eta_correlations.csv \
+    --out-dir paper/results/enrichment/hippocampus
+fi
+
 "$PYTHON" paper/analyses/cell_types/cell_type_axis_associations.py \
   --axis paper/results/transcriptomics/striatum/region_axis.csv \
   --cell-types paper/data/cell_types/connectome_celltype.csv \
@@ -56,4 +66,10 @@ julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
   --cell-types paper/data/cell_types/connectome_celltype.csv \
   --out-dir paper/results/cell_types/hippocampus
 
-echo "Paper analyses complete: paper/results"
+"$PYTHON" paper/analyses/plotting/plot_biological_figures.py \
+  --results-root paper/results \
+  --out-dir paper/figures/biological
+
+echo "Paper analyses complete:"
+echo "  results: paper/results"
+echo "  figures: paper/figures/biological"

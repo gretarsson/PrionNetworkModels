@@ -4,6 +4,7 @@ outputs/
 logs/
 paper/python/.venv/
 paper/results/
+paper/figures/
 .DS_Store
 *.jlso
 *.jld2

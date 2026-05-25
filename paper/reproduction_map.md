@@ -52,10 +52,11 @@ Done:
 - pre-ranked GSEA wrapper
 - cell-type and monoaminergic association script
 - striatum/hippocampus axis comparison script
+- manuscript-style biological plotting script
+- end-to-end paper wrapper that regenerates tables and biological panels
 
 Still to refine:
 
-- exact publication-style composite panels matching the submitted figure files
 - WAIC/model-comparison paper wrappers
 - null-model and holdout paper wrappers
 - full 1000-permutation GSEA outputs for final paper archives

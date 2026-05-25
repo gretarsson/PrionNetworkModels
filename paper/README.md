@@ -88,6 +88,30 @@ python paper/analyses/transcriptomics/compare_axes.py \
   --out-dir paper/results/transcriptomics/striatum_vs_hippocampus
 ```
 
+Create manuscript-style biological figure panels:
+
+```bash
+python paper/analyses/plotting/plot_biological_figures.py \
+  --results-root paper/results \
+  --out-dir paper/figures/biological
+```
+
+The end-to-end convenience wrapper runs the parameter export, transcriptomics,
+cell-type analyses, axis comparison, and plotting:
+
+```bash
+bash paper/run_paper_analyses.sh
+```
+
+To also regenerate full KEGG/GSEA outputs before plotting, run:
+
+```bash
+RUN_GSEA=1 bash paper/run_paper_analyses.sh
+```
+
+Generated tables are written under `paper/results/`, and generated figures are
+written under `paper/figures/`. Both directories are ignored by git.
+
 ## Provenance
 
 This layer ports the relevant analysis logic from:
