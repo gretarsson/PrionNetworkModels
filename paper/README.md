@@ -97,7 +97,13 @@ python paper/analyses/plotting/plot_biological_figures.py \
 ```
 
 The end-to-end convenience wrapper runs the parameter export, transcriptomics,
-filtering robustness variants, cell-type analyses, axis comparison, and plotting:
+cell-type analyses, axis comparison, and plotting separately for three region
+filters:
+
+- `all`: all transcriptomics-matched regions, no posterior-update filter
+- `beta_positive`: `beta > 0`, no posterior-update filter
+- `updated`: `beta > 0` and both `beta`/`gamma` posterior-updated with
+  `ks_pvalue < 0.001`
 
 ```bash
 bash paper/run_paper_analyses.sh
@@ -112,10 +118,22 @@ RUN_GSEA=1 bash paper/run_paper_analyses.sh
 Generated tables are written under `paper/results/`, and generated figures are
 written under `paper/figures/`. Both directories are ignored by git.
 
-Supplementary biological panels are emitted under:
+Filter-specific analyses are emitted under:
 
-- `paper/figures/biological/filtering/` for PCA-axis sensitivity to region filters
-- `paper/figures/biological/comparison/` for gene-coefficient and regional-parameter
+- `paper/results/filtering/all/`
+- `paper/results/filtering/beta_positive/`
+- `paper/results/filtering/updated/`
+- `paper/figures/biological/filtering_levels/all/`
+- `paper/figures/biological/filtering_levels/beta_positive/`
+- `paper/figures/biological/filtering_levels/updated/`
+
+Each filter-level folder contains striatal and hippocampal PCA outputs,
+striatum/hippocampus comparison outputs, cell-type outputs, and GSEA outputs when
+`RUN_GSEA=1` is used.
+
+Supplementary comparison panels are emitted under each filter-level figure folder:
+
+- `comparison/` for gene-coefficient and regional-parameter
   comparisons between striatal and hippocampal seeding
 
 ## Provenance
