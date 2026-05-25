@@ -1,0 +1,22 @@
+[model]
+name = "LOCAL-RF"
+transport = "retrograde"
+parameter_sharing = "independent"
+
+[data]
+network = "data/examples/network.csv"
+observations = "data/examples/observations.csv"
+
+[seeding]
+seed_indices = [1]
+infer_seed = false
+
+[inference]
+n_chains = 1
+target_acceptance = 0.8
+sampler = "NUTS"
+n_samples = 150
+n_warmup = 150
+
+[holdout]
+strategy = "none"

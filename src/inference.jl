@@ -23,6 +23,14 @@ function default_priors(model_name::AbstractString, N::Integer)
             sigma = LogNormal(0, 1),
             seed = truncated(Normal(0.0, 0.1), 0.0, Inf),
         )
+    elseif name == "LOCAL-RF"
+        return (
+            alpha = truncated(Normal(0.0, 0.1), 0.0, Inf),
+            beta = Normal(0.0, 1.0),
+            gamma = truncated(Normal(0.0, 0.1), 0.0, Inf),
+            u0 = truncated(Normal(0.0, 0.1), 0.0, Inf),
+            sigma = LogNormal(0, 1),
+        )
     else
         error("Unknown model name: $model_name")
     end
@@ -145,6 +153,8 @@ function parameter_names_for_model(model_name::AbstractString, N::Integer; seed_
         return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:N], ["sigma"], seed_names)
     elseif name == "DIFF-RF"
         return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:N], ["gamma[$i]" for i in 1:N], ["sigma"], seed_names)
+    elseif name == "LOCAL-RF"
+        return vcat(["alpha"], ["beta[$i]" for i in 1:N], ["gamma[$i]" for i in 1:N], ["u0[$i]" for i in 1:N], ["sigma"])
     else
         error("Unknown model name: $model_name")
     end
@@ -189,14 +199,25 @@ end
             seed_value = seed_values
         end
         params = vcat([rho, alpha], beta, gamma)
+    elseif spec.model.name == "LOCAL-RF"
+        alpha ~ priors.alpha
+        beta ~ filldist(priors.beta, N)
+        gamma ~ filldist(priors.gamma, N)
+        u0 ~ filldist(priors.u0, N)
+        sigma ~ priors.sigma
+        params = vcat([alpha], beta, gamma)
     else
         error("Unsupported model in inference_model: $(spec.model.name)")
     end
 
+    state0 = spec.model.name == "LOCAL-RF" ?
+        initial_conditions_for_spec(spec, N; local_u0 = u0) :
+        initial_conditions_for_spec(spec, N; seed_value = seed_value)
+
     predicted = solve(
         prob,
         Tsit5();
-        u0 = initial_conditions_for_spec(spec, N; seed_value = seed_value),
+        u0 = state0,
         p = collect(params),
         saveat = timepoints,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
@@ -238,17 +259,28 @@ function posterior_mean_parameter_vector(chain::Chains, model_name::AbstractStri
         beta = [mean(vec(Array(chain[Symbol("beta[$i]")]))) for i in 1:N]
         gamma = [mean(vec(Array(chain[Symbol("gamma[$i]")]))) for i in 1:N]
         return vcat([mean(vec(Array(chain[:rho]))), mean(vec(Array(chain[:alpha])))], beta, gamma)
+    elseif name == "LOCAL-RF"
+        beta = [mean(vec(Array(chain[Symbol("beta[$i]")]))) for i in 1:N]
+        gamma = [mean(vec(Array(chain[Symbol("gamma[$i]")]))) for i in 1:N]
+        return vcat([mean(vec(Array(chain[:alpha])))], beta, gamma)
     else
         error("Unknown model name: $model_name")
     end
 end
 
 function posterior_mean_seed(chain::Chains, spec::RunSpec)
-    names = seed_parameter_names(spec)
-    if length(names) == 1
-        return mean(vec(Array(chain[Symbol(names[1])])))
+    if spec.model.name == "LOCAL-RF"
+        u0_names = sort(
+            [String(name) for name in names(chain, :parameters) if startswith(String(name), "u0[")];
+            by = name -> parse(Int, match(r"u0\[(\d+)\]", name).captures[1]),
+        )
+        return [mean(vec(Array(chain[Symbol(name)]))) for name in u0_names]
     end
-    return [mean(vec(Array(chain[Symbol(name)]))) for name in names]
+    seed_names = seed_parameter_names(spec)
+    if length(seed_names) == 1
+        return mean(vec(Array(chain[Symbol(seed_names[1])])))
+    end
+    return [mean(vec(Array(chain[Symbol(name)]))) for name in seed_names]
 end
 
 function write_posterior_hdf5(path::AbstractString, chain::Chains, spec::RunSpec, labels::Vector{String}, timepoints::Vector{Float64})

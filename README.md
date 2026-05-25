@@ -7,6 +7,7 @@ The current public model names are:
 - `DIFF`
 - `DIFF-R`
 - `DIFF-RF`
+- `LOCAL-RF`
 
 This repository is intentionally separate from the legacy `synuclein_spread` archive so the new workflow can be cleaner, slimmer, and easier for others to use.
 
@@ -157,6 +158,7 @@ strategy = "none"
 - `[seeding]`
   - `seed_indices`: which region indices are the initial seed sites
   - `infer_seed`: whether the initial seed magnitude should be inferred
+  - `LOCAL-RF` ignores seeded propagation and instead infers one local initial condition `u0[i]` per region; `seed_indices` are retained for diagnostics and seed-region plots
 
 - `[inference]`
   - `sampler`: currently `NUTS` or `MH`
@@ -228,6 +230,12 @@ Option A: use the dedicated smoke-test script
 julia --project=. scripts/smoke_fit_diff_rf.jl
 ```
 
+For the uncoupled local rise-and-fall model:
+
+```bash
+julia --project=. scripts/smoke_fit_local_rf.jl
+```
+
 Option B: use the generic runner
 
 ```bash
@@ -274,6 +282,14 @@ That submits four single-chain jobs for each paper retrograde config:
 - `DIFF-RF`
 
 for both the striatum and hippocampus datasets.
+
+To submit the uncoupled striatum `LOCAL-RF` comparison, where `alpha` and `sigma` are shared globally but each region has its own `u0`, `beta`, and `gamma`:
+
+```bash
+scripts/run_striatum_local_rf_inferences.sh
+```
+
+By default this submits four single-chain jobs from [striatum_local_rf_core.toml](configs/paper/striatum_local_rf_core.toml).
 
 The hippocampus configs are:
 

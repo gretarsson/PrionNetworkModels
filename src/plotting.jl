@@ -73,6 +73,11 @@ function seed_parameter_indices(parameter_names::Vector{String})
     end
 
     indices = findall(name -> startswith(name, "seed_values["), parameter_names)
+    if isempty(indices)
+        indices = findall(name -> startswith(name, "u0["), parameter_names)
+        sort!(indices; by = idx -> parse(Int, match(r"u0\[(\d+)\]", parameter_names[idx]).captures[1]))
+        return indices
+    end
     sort!(indices; by = idx -> parameter_names[idx])
     return indices
 end
@@ -485,6 +490,8 @@ function trajectory_parameter_names(model_name::AbstractString, n_regions::Integ
         return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:n_regions])
     elseif model_name == "DIFF-RF"
         return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:n_regions], ["gamma[$i]" for i in 1:n_regions])
+    elseif model_name == "LOCAL-RF"
+        return vcat(["alpha"], ["beta[$i]" for i in 1:n_regions], ["gamma[$i]" for i in 1:n_regions])
     else
         error("Unknown model name: $model_name")
     end

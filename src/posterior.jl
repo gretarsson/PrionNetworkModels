@@ -22,12 +22,22 @@ function posterior_mean_parameter_vector(samples::AbstractMatrix, parameter_name
         beta = [mean(samples[:, name_to_idx["beta[$i]"]]) for i in 1:N]
         gamma = [mean(samples[:, name_to_idx["gamma[$i]"]]) for i in 1:N]
         return vcat([mean(samples[:, name_to_idx["rho"]]), mean(samples[:, name_to_idx["alpha"]])], beta, gamma)
+    elseif model_name == "LOCAL-RF"
+        beta = [mean(samples[:, name_to_idx["beta[$i]"]]) for i in 1:N]
+        gamma = [mean(samples[:, name_to_idx["gamma[$i]"]]) for i in 1:N]
+        return vcat([mean(samples[:, name_to_idx["alpha"]])], beta, gamma)
     else
         error("Unknown model name: $model_name")
     end
 end
 
 function posterior_mean_seed(samples::AbstractMatrix, parameter_names::Vector{String})
+    u0_idxs = findall(name -> startswith(name, "u0["), parameter_names)
+    if !isempty(u0_idxs)
+        sort!(u0_idxs; by = idx -> parse(Int, match(r"u0\[(\d+)\]", parameter_names[idx]).captures[1]))
+        return [mean(samples[:, idx]) for idx in u0_idxs]
+    end
+
     idx = findfirst(==("seed"), parameter_names)
     if !isnothing(idx)
         return mean(samples[:, idx])
