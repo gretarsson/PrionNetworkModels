@@ -131,10 +131,16 @@ Each filter-level folder contains striatal and hippocampal PCA outputs,
 striatum/hippocampus comparison outputs, cell-type outputs, and GSEA outputs when
 `RUN_GSEA=1` is used.
 
-Supplementary comparison panels are emitted under each filter-level figure folder:
+Filter-dependent supplementary comparison panels are emitted under each
+filter-level figure folder:
 
-- `comparison/` for gene-coefficient and regional-parameter
-  comparisons between striatal and hippocampal seeding
+- `comparison/` for gene-axis and gene-coefficient comparisons between striatal
+  and hippocampal seeding
+
+The raw regional `beta`/`gamma` comparison does not depend on the transcriptomic
+filter and is emitted once under:
+
+- `paper/figures/biological/shared/`
 
 ## Provenance
 

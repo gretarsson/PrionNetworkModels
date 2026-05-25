@@ -504,31 +504,34 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--results-root", default="paper/results")
     parser.add_argument("--out-dir", default="paper/figures/biological")
+    parser.add_argument("--regional-only", action="store_true")
     args = parser.parse_args()
 
     setup_style()
     root = Path(args.results_root)
     out = Path(args.out_dir)
 
-    plot_dataset(
-        root / "transcriptomics/striatum",
-        root / "cell_types/striatum",
-        root / "enrichment/striatum",
-        out / "striatum",
-        "Striatum",
-    )
-    plot_dataset(
-        root / "transcriptomics/hippocampus",
-        root / "cell_types/hippocampus",
-        root / "enrichment/hippocampus",
-        out / "hippocampus",
-        "Hippocampus",
-    )
-    plot_axis_comparison(root / "transcriptomics/striatum_vs_hippocampus", out / "comparison")
-    plot_gene_parameter_comparison(root, out / "comparison")
-    plot_regional_parameter_comparison(root, out / "comparison")
-    plot_filtering_robustness(root, "striatum", out / "filtering", "Striatum")
-    plot_filtering_robustness(root, "hippocampus", out / "filtering", "Hippocampus")
+    if args.regional_only:
+        plot_regional_parameter_comparison(root, out)
+    else:
+        plot_dataset(
+            root / "transcriptomics/striatum",
+            root / "cell_types/striatum",
+            root / "enrichment/striatum",
+            out / "striatum",
+            "Striatum",
+        )
+        plot_dataset(
+            root / "transcriptomics/hippocampus",
+            root / "cell_types/hippocampus",
+            root / "enrichment/hippocampus",
+            out / "hippocampus",
+            "Hippocampus",
+        )
+        plot_axis_comparison(root / "transcriptomics/striatum_vs_hippocampus", out / "comparison")
+        plot_gene_parameter_comparison(root, out / "comparison")
+        plot_filtering_robustness(root, "striatum", out / "filtering", "Striatum")
+        plot_filtering_robustness(root, "hippocampus", out / "filtering", "Hippocampus")
     print(out)
 
 

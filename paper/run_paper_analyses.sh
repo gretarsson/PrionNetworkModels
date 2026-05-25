@@ -107,7 +107,13 @@ for level in ${FILTER_LEVELS:-all beta_positive updated}; do
   esac
 done
 
+"$PYTHON" paper/analyses/plotting/plot_biological_figures.py \
+  --results-root paper/results \
+  --out-dir paper/figures/biological/shared \
+  --regional-only
+
 echo "Paper analyses complete:"
 echo "  shared parameters: paper/results/parameters"
 echo "  filter-level results: paper/results/filtering/{all,beta_positive,updated}"
 echo "  filter-level figures: paper/figures/biological/filtering_levels/{all,beta_positive,updated}"
+echo "  shared figures: paper/figures/biological/shared"

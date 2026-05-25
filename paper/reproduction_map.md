@@ -30,7 +30,7 @@ These are now routed through `paper/analyses/`.
 | Cross-dataset gene comparison | PC direction and gene eta correlation preservation | `paper/analyses/transcriptomics/compare_axes.py` |
 | Fig. S PCA filtering | Full biological analyses repeated across all, beta-positive, and updated filters | `paper/run_paper_analyses.sh` filter-level outputs |
 | Fig. S hippocampal enrichment | Additional hippocampal category/NES panels | `run_gsea.py` plus downstream plotting refinement |
-| Fig. S beta/gamma comparison | Gene-coefficient and regional-parameter striatum/hippocampus comparisons | `paper/analyses/plotting/plot_biological_figures.py` |
+| Fig. S beta/gamma comparison | Filter-specific gene-coefficient comparisons and one shared regional-parameter striatum/hippocampus comparison | `paper/analyses/plotting/plot_biological_figures.py` |
 
 ## Current Selected Run Bundles
 
