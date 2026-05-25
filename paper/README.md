@@ -97,7 +97,7 @@ python paper/analyses/plotting/plot_biological_figures.py \
 ```
 
 The end-to-end convenience wrapper runs the parameter export, transcriptomics,
-cell-type analyses, axis comparison, and plotting:
+filtering robustness variants, cell-type analyses, axis comparison, and plotting:
 
 ```bash
 bash paper/run_paper_analyses.sh
@@ -111,6 +111,12 @@ RUN_GSEA=1 bash paper/run_paper_analyses.sh
 
 Generated tables are written under `paper/results/`, and generated figures are
 written under `paper/figures/`. Both directories are ignored by git.
+
+Supplementary biological panels are emitted under:
+
+- `paper/figures/biological/filtering/` for PCA-axis sensitivity to region filters
+- `paper/figures/biological/comparison/` for gene-coefficient and regional-parameter
+  comparisons between striatal and hippocampal seeding
 
 ## Provenance
 

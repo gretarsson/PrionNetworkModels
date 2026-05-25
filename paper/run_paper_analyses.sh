@@ -37,9 +37,39 @@ julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
 
 "$PYTHON" paper/analyses/transcriptomics/gene_parameter_pca.py \
   --expression paper/data/transcriptomics/avg_Pangea_exp.csv \
+  --beta paper/results/parameters/striatum_diff_rf/beta.csv \
+  --gamma paper/results/parameters/striatum_diff_rf/gamma.csv \
+  --beta-min=-Inf \
+  --no-update-filter \
+  --out-dir paper/results/transcriptomics/striatum_filter_all
+
+"$PYTHON" paper/analyses/transcriptomics/gene_parameter_pca.py \
+  --expression paper/data/transcriptomics/avg_Pangea_exp.csv \
+  --beta paper/results/parameters/striatum_diff_rf/beta.csv \
+  --gamma paper/results/parameters/striatum_diff_rf/gamma.csv \
+  --no-update-filter \
+  --out-dir paper/results/transcriptomics/striatum_filter_beta_positive
+
+"$PYTHON" paper/analyses/transcriptomics/gene_parameter_pca.py \
+  --expression paper/data/transcriptomics/avg_Pangea_exp.csv \
   --beta paper/results/parameters/hippocampus_diff_rf/beta.csv \
   --gamma paper/results/parameters/hippocampus_diff_rf/gamma.csv \
   --out-dir paper/results/transcriptomics/hippocampus
+
+"$PYTHON" paper/analyses/transcriptomics/gene_parameter_pca.py \
+  --expression paper/data/transcriptomics/avg_Pangea_exp.csv \
+  --beta paper/results/parameters/hippocampus_diff_rf/beta.csv \
+  --gamma paper/results/parameters/hippocampus_diff_rf/gamma.csv \
+  --beta-min=-Inf \
+  --no-update-filter \
+  --out-dir paper/results/transcriptomics/hippocampus_filter_all
+
+"$PYTHON" paper/analyses/transcriptomics/gene_parameter_pca.py \
+  --expression paper/data/transcriptomics/avg_Pangea_exp.csv \
+  --beta paper/results/parameters/hippocampus_diff_rf/beta.csv \
+  --gamma paper/results/parameters/hippocampus_diff_rf/gamma.csv \
+  --no-update-filter \
+  --out-dir paper/results/transcriptomics/hippocampus_filter_beta_positive
 
 "$PYTHON" paper/analyses/transcriptomics/compare_axes.py \
   --striatum-dir paper/results/transcriptomics/striatum \

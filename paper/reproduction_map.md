@@ -28,8 +28,9 @@ These are now routed through `paper/analyses/`.
 | Cell-type panels | CLR cell-type associations and monoaminergic score | `paper/analyses/cell_types/cell_type_axis_associations.py` |
 | Hippocampus PCA figure | Replication of eta in hippocampal seeding | Same transcriptomics/cell-type scripts with hippocampus parameter tables |
 | Cross-dataset gene comparison | PC direction and gene eta correlation preservation | `paper/analyses/transcriptomics/compare_axes.py` |
-| Fig. S PCA filtering | Robustness to filtering choices | `gene_parameter_pca.py --no-update-filter` and `--beta-min` variants |
+| Fig. S PCA filtering | Robustness to filtering choices | `paper/run_paper_analyses.sh` variants plus `paper/analyses/plotting/plot_biological_figures.py` |
 | Fig. S hippocampal enrichment | Additional hippocampal category/NES panels | `run_gsea.py` plus downstream plotting refinement |
+| Fig. S beta/gamma comparison | Gene-coefficient and regional-parameter striatum/hippocampus comparisons | `paper/analyses/plotting/plot_biological_figures.py` |
 
 ## Current Selected Run Bundles
 
@@ -54,6 +55,8 @@ Done:
 - striatum/hippocampus axis comparison script
 - manuscript-style biological plotting script
 - end-to-end paper wrapper that regenerates tables and biological panels
+- PCA filtering robustness variants
+- striatum/hippocampus gene-coefficient and regional-parameter comparison panels
 
 Still to refine:
 

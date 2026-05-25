@@ -284,6 +284,210 @@ def plot_axis_comparison(compare_dir: Path, out_dir: Path) -> None:
     save(fig, out_dir / "gene_eta_striatum_vs_hippocampus")
 
 
+def comparison_text(x: np.ndarray, y: np.ndarray) -> str:
+    mask = np.isfinite(x) & np.isfinite(y)
+    if mask.sum() < 3:
+        return f"n={mask.sum()}"
+    r, p = stats.pearsonr(x[mask], y[mask])
+    return f"r={r:.2f}\np={p:.2g}\nn={mask.sum()}"
+
+
+def shared_lims(x: pd.Series, y: pd.Series) -> tuple[float, float]:
+    vals = pd.concat([x, y], ignore_index=True)
+    lo = vals.quantile(0.01)
+    hi = vals.quantile(0.99)
+    pad = 0.06 * max(hi - lo, 1e-12)
+    return float(lo - pad), float(hi + pad)
+
+
+def plot_gene_parameter_comparison(root: Path, out_dir: Path) -> None:
+    str_path = root / "transcriptomics/striatum/gene_parameter_coefficients.csv"
+    hip_path = root / "transcriptomics/hippocampus/gene_parameter_coefficients.csv"
+    if not str_path.exists() or not hip_path.exists():
+        return
+
+    striatum = pd.read_csv(str_path)[["gene", "coef_beta", "coef_gamma"]]
+    hippocampus = pd.read_csv(hip_path)[["gene", "coef_beta", "coef_gamma"]]
+    df = striatum.merge(hippocampus, on="gene", suffixes=("_striatum", "_hippocampus"))
+
+    fig, axes = plt.subplots(1, 2, figsize=(8.0, 3.6))
+    for ax, param, title in zip(axes, ["beta", "gamma"], [r"$\beta$ coefficients", r"$\gamma$ coefficients"]):
+        x = df[f"coef_{param}_striatum"]
+        y = df[f"coef_{param}_hippocampus"]
+        ax.scatter(x, y, s=5, alpha=0.35, color="0.25", rasterized=True)
+        lo, hi = shared_lims(x, y)
+        ax.plot([lo, hi], [lo, hi], color="0.6", lw=1.0)
+        ax.set_xlim(lo, hi)
+        ax.set_ylim(lo, hi)
+        ax.set_xlabel(f"striatal {title}")
+        ax.set_ylabel(f"hippocampal {title}")
+        ax.text(
+            0.04,
+            0.96,
+            comparison_text(x.to_numpy(), y.to_numpy()),
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=9,
+        )
+        style_axis(ax)
+    fig.tight_layout()
+    save(fig, out_dir / "gene_beta_gamma_coefficients_striatum_vs_hippocampus")
+
+
+def load_parameter_family(root: Path, dataset: str, family: str) -> pd.DataFrame:
+    path = root / f"parameters/{dataset}_diff_rf/{family}.csv"
+    df = pd.read_csv(path)
+    return df.rename(
+        columns={
+            "mean_post": family,
+            "ks_pvalue": f"{family}_ks_pvalue",
+            "updated": f"{family}_updated",
+        }
+    )[["region", family, f"{family}_ks_pvalue", f"{family}_updated"]]
+
+
+def load_regional_parameters(root: Path, dataset: str) -> pd.DataFrame:
+    beta = load_parameter_family(root, dataset, "beta")
+    gamma = load_parameter_family(root, dataset, "gamma")
+    df = beta.merge(gamma, on="region", how="inner")
+    df["region_base"] = df["region"].astype(str).map(lambda x: x[1:] if len(x) > 1 and x[0] in {"i", "c"} else x)
+    df["hemi"] = df["region"].astype(str).str[0]
+    return df
+
+
+def plot_regional_parameter_comparison(root: Path, out_dir: Path) -> None:
+    try:
+        striatum = load_regional_parameters(root, "striatum")
+        hippocampus = load_regional_parameters(root, "hippocampus")
+    except FileNotFoundError:
+        return
+
+    df = striatum.merge(hippocampus, on="region", suffixes=("_striatum", "_hippocampus"))
+    df["used_in_both"] = (
+        (df["beta_striatum"] > 0)
+        & (df["beta_hippocampus"] > 0)
+        & (df["beta_ks_pvalue_striatum"] < 0.001)
+        & (df["gamma_ks_pvalue_striatum"] < 0.001)
+        & (df["beta_ks_pvalue_hippocampus"] < 0.001)
+        & (df["gamma_ks_pvalue_hippocampus"] < 0.001)
+    )
+
+    fig, axes = plt.subplots(1, 2, figsize=(8.0, 3.6))
+    for ax, param, title in zip(axes, ["beta", "gamma"], [r"$\beta$", r"$\gamma$"]):
+        x = df[f"{param}_striatum"]
+        y = df[f"{param}_hippocampus"]
+        ax.scatter(x, y, s=16, alpha=0.28, color="0.65", linewidth=0)
+        highlight = df["used_in_both"]
+        if highlight.any():
+            ax.scatter(
+                x[highlight],
+                y[highlight],
+                s=34,
+                color="#4C72B0",
+                edgecolor="white",
+                linewidth=0.4,
+                label="used in both",
+            )
+        lo, hi = shared_lims(x, y)
+        ax.plot([lo, hi], [lo, hi], color="0.5", lw=1.0)
+        ax.set_xlim(lo, hi)
+        ax.set_ylim(lo, hi)
+        ax.set_xlabel(f"striatal {title}")
+        ax.set_ylabel(f"hippocampal {title}")
+        ax.text(
+            0.04,
+            0.96,
+            comparison_text(x.to_numpy(), y.to_numpy()),
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=9,
+        )
+        style_axis(ax)
+    if df["used_in_both"].any():
+        axes[0].legend(frameon=False, loc="lower right", fontsize=8)
+    fig.tight_layout()
+    save(fig, out_dir / "regional_beta_gamma_striatum_vs_hippocampus")
+
+
+def plot_filtering_robustness(root: Path, dataset: str, out_dir: Path, label: str) -> None:
+    variants = [
+        ("all", "All regions", root / f"transcriptomics/{dataset}_filter_all"),
+        ("beta_positive", r"$\beta>0$", root / f"transcriptomics/{dataset}_filter_beta_positive"),
+        ("updated", r"$\beta>0$ + updated", root / f"transcriptomics/{dataset}"),
+    ]
+    variants = [(key, name, path) for key, name, path in variants if (path / "pca_summary.csv").exists()]
+    if len(variants) < 2:
+        return
+
+    colors = {
+        "all": "#7F7F7F",
+        "beta_positive": "#4C72B0",
+        "updated": "#C44E52",
+    }
+
+    fig, axes = plt.subplots(1, 2, figsize=(8.6, 3.8))
+    load_rows = []
+    for key, name, path in variants:
+        pca = pd.read_csv(path / "pca_summary.csv").iloc[0]
+        load_rows.append(
+            {
+                "key": key,
+                "name": name,
+                "loading_beta": pca["loading_beta"],
+                "loading_gamma": pca["loading_gamma"],
+                "explained": pca["explained_variance_ratio"],
+                "n_regions": int(pca["n_regions"]),
+            }
+        )
+        axes[0].arrow(
+            0,
+            0,
+            pca["loading_beta"],
+            pca["loading_gamma"],
+            width=0.006,
+            head_width=0.05,
+            length_includes_head=True,
+            color=colors.get(key, "0.3"),
+            alpha=0.95,
+            label=f"{name} (n={int(pca['n_regions'])})",
+        )
+    axes[0].axhline(0, color="0.8", lw=0.8)
+    axes[0].axvline(0, color="0.8", lw=0.8)
+    axes[0].set_xlim(-1.05, 1.05)
+    axes[0].set_ylim(-1.05, 1.05)
+    axes[0].set_aspect("equal", adjustable="box")
+    axes[0].set_xlabel(r"PC1 loading on $z(\beta)$")
+    axes[0].set_ylabel(r"PC1 loading on $z(\gamma)$")
+    axes[0].set_title(f"{label}: PC1 directions")
+    axes[0].legend(frameon=False, fontsize=8, loc="lower right")
+    style_axis(axes[0])
+
+    for key, name, path in variants:
+        region = pd.read_csv(path / "region_axis.csv")
+        axes[1].scatter(
+            region["z_beta"],
+            region["z_gamma"],
+            s=24,
+            alpha=0.5 if key != "updated" else 0.9,
+            color=colors.get(key, "0.3"),
+            edgecolor="white" if key == "updated" else "none",
+            linewidth=0.3,
+            label=name,
+        )
+    axes[1].axhline(0, color="0.8", lw=0.8)
+    axes[1].axvline(0, color="0.8", lw=0.8)
+    axes[1].set_xlabel(r"$z(\beta)$")
+    axes[1].set_ylabel(r"$z(\gamma)$")
+    axes[1].set_title(f"{label}: retained regions")
+    style_axis(axes[1])
+    fig.tight_layout()
+    save(fig, out_dir / f"{dataset}_pca_filtering_robustness")
+
+    pd.DataFrame(load_rows).to_csv(out_dir / f"{dataset}_pca_filtering_summary.csv", index=False)
+
+
 def plot_dataset(result_dir: Path, cell_dir: Path, enrichment_dir: Path | None, out_dir: Path, label: str) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     plot_pca_coefficients(result_dir, out_dir, label)
@@ -321,6 +525,10 @@ def main() -> None:
         "Hippocampus",
     )
     plot_axis_comparison(root / "transcriptomics/striatum_vs_hippocampus", out / "comparison")
+    plot_gene_parameter_comparison(root, out / "comparison")
+    plot_regional_parameter_comparison(root, out / "comparison")
+    plot_filtering_robustness(root, "striatum", out / "filtering", "Striatum")
+    plot_filtering_robustness(root, "hippocampus", out / "filtering", "Hippocampus")
     print(out)
 
 
