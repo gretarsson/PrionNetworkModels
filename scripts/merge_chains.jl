@@ -50,6 +50,19 @@ function chain_run_dir(runs_root::AbstractString, prefix::AbstractString, chain:
     return direct
 end
 
+function source_chain_rows(runs_root::AbstractString, prefix::Union{Nothing,String}, chain_labels, run_dirs)
+    if isnothing(prefix)
+        return [(chain = chain, source = run_dir, archive = "") for (chain, run_dir) in zip(chain_labels, run_dirs)]
+    end
+    return map(zip(chain_labels, run_dirs)) do (chain, run_dir)
+        run_id = "$(prefix)_C$(chain)"
+        source = joinpath(runs_root, run_id)
+        archive = joinpath(runs_root, "_source_chains", prefix, run_id)
+        archive_value = abspath(run_dir) == abspath(archive) ? archive : ""
+        (chain = chain, source = source, archive = archive_value)
+    end
+end
+
 function main()
     root = dirname(@__DIR__)
     runs_root = get_arg("--runs-root", joinpath(root, "runs"))
@@ -81,7 +94,7 @@ function main()
     end
 
     paths = merge_chain_runs(run_dirs; merged_run_root = runs_root, run_id = out_run_id)
-    source_rows = [(chain = chain, source = run_dir, archive = "") for (chain, run_dir) in zip(chain_labels, run_dirs)]
+    source_rows = source_chain_rows(runs_root, prefix, chain_labels, run_dirs)
     if archive_sources
         archive_root = joinpath(runs_root, "_source_chains", out_run_id)
         source_rows = archive_source_chains!(source_rows; archive_root = archive_root)
