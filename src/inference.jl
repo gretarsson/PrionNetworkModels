@@ -337,11 +337,17 @@ function _resolve_path(path_str::AbstractString, config_dir::AbstractString)
     if isabspath(path_str)
         return String(path_str)
     end
-    candidates = [
-        normpath(joinpath(config_dir, path_str)),
-        normpath(joinpath(dirname(config_dir), path_str)),
-        normpath(joinpath(dirname(dirname(config_dir)), path_str)),
-    ]
+
+    candidates = String[]
+    current = abspath(config_dir)
+    while true
+        push!(candidates, normpath(joinpath(current, path_str)))
+        isfile(joinpath(current, "Project.toml")) && break
+        parent = dirname(current)
+        parent == current && break
+        current = parent
+    end
+
     for candidate in candidates
         if isfile(candidate)
             return candidate

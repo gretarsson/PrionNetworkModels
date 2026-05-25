@@ -19,18 +19,18 @@ These are generated from `runs/` bundles using the Julia package and plotting sc
 
 ## Biological Interpretation Figures
 
-These are now routed through `paper/analyses/`.
+These are now routed through `paper-rf/analyses/`.
 
 | Manuscript item | Content | Reproduction source |
 | --- | --- | --- |
-| Main PCA figure | Gene-level beta/gamma coefficient PCA, eta axis, gene ranking | `paper/analyses/transcriptomics/gene_parameter_pca.py` |
-| GSEA panels | KEGG pre-ranked enrichment along eta | `paper/analyses/transcriptomics/run_gsea.py` |
-| Cell-type panels | CLR cell-type associations and monoaminergic score | `paper/analyses/cell_types/cell_type_axis_associations.py` |
+| Main PCA figure | Gene-level beta/gamma coefficient PCA, eta axis, gene ranking | `paper-rf/analyses/transcriptomics/gene_parameter_pca.py` |
+| GSEA panels | KEGG pre-ranked enrichment along eta | `paper-rf/analyses/transcriptomics/run_gsea.py` |
+| Cell-type panels | CLR cell-type associations and monoaminergic score | `paper-rf/analyses/cell_types/cell_type_axis_associations.py` |
 | Hippocampus PCA figure | Replication of eta in hippocampal seeding | Same transcriptomics/cell-type scripts with hippocampus parameter tables |
-| Cross-dataset gene comparison | PC direction and gene eta correlation preservation | `paper/analyses/transcriptomics/compare_axes.py` |
-| Fig. S PCA filtering | Full biological analyses repeated across all, beta-positive, and updated filters | `paper/run_paper_analyses.sh` filter-level outputs |
+| Cross-dataset gene comparison | PC direction and gene eta correlation preservation | `paper-rf/analyses/transcriptomics/compare_axes.py` |
+| Fig. S PCA filtering | Full biological analyses repeated across all, beta-positive, and updated filters | `paper-rf/run_paper_analyses.sh` filter-level outputs |
 | Fig. S hippocampal enrichment | Additional hippocampal category/NES panels | `run_gsea.py` plus downstream plotting refinement |
-| Fig. S beta/gamma comparison | Filter-specific gene-coefficient comparisons and one shared regional-parameter striatum/hippocampus comparison | `paper/analyses/plotting/plot_biological_figures.py` |
+| Fig. S beta/gamma comparison | Filter-specific gene-coefficient comparisons and one shared regional-parameter striatum/hippocampus comparison | `paper-rf/analyses/plotting/plot_biological_figures.py` |
 
 ## Current Selected Run Bundles
 
@@ -46,8 +46,8 @@ The current working paper choices are:
 
 Done:
 
-- curated transcriptomic input copied into `paper/data/transcriptomics/`
-- curated cell-type input copied into `paper/data/cell_types/`
+- curated transcriptomic input copied into `paper-rf/data/transcriptomics/`
+- curated cell-type input copied into `paper-rf/data/cell_types/`
 - posterior beta/gamma table export from run bundles
 - gene coefficient PCA and eta ranking
 - pre-ranked GSEA wrapper

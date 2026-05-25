@@ -4,8 +4,8 @@ transport = "retrograde"
 parameter_sharing = "independent"
 
 [data]
-network = "data/paper/striatum/network.csv"
-observations = "data/paper/striatum/observations.csv"
+network = "paper-copath/data/network.csv"
+observations = "paper-copath/data/tau_pathology_mapt.csv"
 region_label_style = "allen_mouse_ccfv3"
 
 [seeding]

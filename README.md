@@ -12,9 +12,14 @@ The current public model names are:
 This repository is intentionally separate from the legacy `synuclein_spread` archive so the new workflow can be cleaner, slimmer, and easier for others to use.
 
 The reusable modeling package lives in `src/`, with general command-line helpers in
-`scripts/` and cluster wrappers in `cluster/`. Paper-specific biological analyses
-are isolated in `paper/` so the core package stays useful for future projects and
-students.
+`scripts/` and cluster wrappers in `cluster/`. Paper-specific analyses and curated
+inputs are isolated by project:
+
+- `paper-rf/`: rise-and-fall alpha-synuclein paper
+- `paper-copath/`: synuclein/tau/A-beta co-pathology paper
+
+This keeps the core package useful for future projects and students without
+mixing manuscript-specific workflows together.
 
 ## What The Workflow Looks Like
 
@@ -295,13 +300,13 @@ To submit the uncoupled striatum `LOCAL-RF` comparison, where `alpha` and `sigma
 scripts/run_striatum_local_rf_inferences.sh
 ```
 
-By default this submits four single-chain jobs from [striatum_local_rf_core.toml](configs/paper/striatum_local_rf_core.toml).
+By default this submits four single-chain jobs from [striatum_local_rf_core.toml](paper-rf/configs/striatum_local_rf_core.toml).
 
 The hippocampus configs are:
 
-- [hippocampus_core.toml](configs/paper/hippocampus_core.toml)
-- [hippocampus_diff_r_core.toml](configs/paper/hippocampus_diff_r_core.toml)
-- [hippocampus_diff_rf_core.toml](configs/paper/hippocampus_diff_rf_core.toml)
+- [hippocampus_core.toml](paper-rf/configs/hippocampus_core.toml)
+- [hippocampus_diff_r_core.toml](paper-rf/configs/hippocampus_diff_r_core.toml)
+- [hippocampus_diff_rf_core.toml](paper-rf/configs/hippocampus_diff_rf_core.toml)
 
 These use the legacy hippocampus seed indices `[53, 55, 56]`, corresponding to `iCA1`, `iCA3`, and `iDG`. They fit raw replicate observations by default, matching the striatum configs.
 

@@ -1,14 +1,14 @@
 [model]
-name = "DIFF"
+name = "DIFF-RF"
 transport = "retrograde"
 parameter_sharing = "independent"
 
 [data]
-network = "data/paper/striatum/network.csv"
-observations = "data/paper/striatum/observations.csv"
+network = "paper-rf/data/hippocampus/network.csv"
+observations = "paper-rf/data/hippocampus/observations.csv"
 
 [seeding]
-seed_indices = [74]
+seed_indices = [53, 55, 56]
 infer_seed = true
 
 [inference]

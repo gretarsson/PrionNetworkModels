@@ -22,10 +22,10 @@ The current manuscript requires these paper-specific analyses:
 
 Curated paper input tables are stored in:
 
-- `paper/data/transcriptomics/avg_Pangea_exp.csv`
-- `paper/data/cell_types/connectome_celltype.csv`
+- `paper-rf/data/transcriptomics/avg_Pangea_exp.csv`
+- `paper-rf/data/cell_types/connectome_celltype.csv`
 
-The modeling inputs remain in `data/paper/`. Large generated run bundles remain in
+The modeling inputs remain in `paper-rf/data/`. Large generated run bundles remain in
 `runs/` and are not part of the source package API.
 
 ## Recommended Run Order
@@ -33,29 +33,29 @@ The modeling inputs remain in `data/paper/`. Large generated run bundles remain 
 From the repository root:
 
 ```bash
-julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
+julia --project=. paper-rf/analyses/model_parameters/export_parameter_tables.jl \
   --run runs/striatum_DIFF-RF_RETRO_C1_C3_C4 \
-  --out-dir paper/results/parameters/striatum_diff_rf
+  --out-dir paper-rf/results/parameters/striatum_diff_rf
 
-julia --project=. paper/analyses/model_parameters/export_parameter_tables.jl \
+julia --project=. paper-rf/analyses/model_parameters/export_parameter_tables.jl \
   --run runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_partial_C1_C4 \
-  --out-dir paper/results/parameters/hippocampus_diff_rf
+  --out-dir paper-rf/results/parameters/hippocampus_diff_rf
 ```
 
 Then create gene-parameter PCA outputs:
 
 ```bash
-python paper/analyses/transcriptomics/gene_parameter_pca.py \
-  --expression paper/data/transcriptomics/avg_Pangea_exp.csv \
-  --beta paper/results/parameters/striatum_diff_rf/beta.csv \
-  --gamma paper/results/parameters/striatum_diff_rf/gamma.csv \
-  --out-dir paper/results/transcriptomics/striatum
+python paper-rf/analyses/transcriptomics/gene_parameter_pca.py \
+  --expression paper-rf/data/transcriptomics/avg_Pangea_exp.csv \
+  --beta paper-rf/results/parameters/striatum_diff_rf/beta.csv \
+  --gamma paper-rf/results/parameters/striatum_diff_rf/gamma.csv \
+  --out-dir paper-rf/results/transcriptomics/striatum
 
-python paper/analyses/transcriptomics/gene_parameter_pca.py \
-  --expression paper/data/transcriptomics/avg_Pangea_exp.csv \
-  --beta paper/results/parameters/hippocampus_diff_rf/beta.csv \
-  --gamma paper/results/parameters/hippocampus_diff_rf/gamma.csv \
-  --out-dir paper/results/transcriptomics/hippocampus
+python paper-rf/analyses/transcriptomics/gene_parameter_pca.py \
+  --expression paper-rf/data/transcriptomics/avg_Pangea_exp.csv \
+  --beta paper-rf/results/parameters/hippocampus_diff_rf/beta.csv \
+  --gamma paper-rf/results/parameters/hippocampus_diff_rf/gamma.csv \
+  --out-dir paper-rf/results/transcriptomics/hippocampus
 ```
 
 By default, this applies the manuscript-style filters `beta > 0` and
@@ -65,35 +65,35 @@ checks like Fig. S2, pass `--no-update-filter` or adjust `--beta-min`.
 Optional GSEA requires `gseapy` and internet/cache access to the Enrichr library:
 
 ```bash
-python paper/analyses/transcriptomics/run_gsea.py \
-  --input paper/results/transcriptomics/striatum/gene_eta_correlations.csv \
-  --out-dir paper/results/enrichment/striatum
+python paper-rf/analyses/transcriptomics/run_gsea.py \
+  --input paper-rf/results/transcriptomics/striatum/gene_eta_correlations.csv \
+  --out-dir paper-rf/results/enrichment/striatum
 ```
 
 Cell-type associations:
 
 ```bash
-python paper/analyses/cell_types/cell_type_axis_associations.py \
-  --axis paper/results/transcriptomics/striatum/region_axis.csv \
-  --cell-types paper/data/cell_types/connectome_celltype.csv \
-  --out-dir paper/results/cell_types/striatum
+python paper-rf/analyses/cell_types/cell_type_axis_associations.py \
+  --axis paper-rf/results/transcriptomics/striatum/region_axis.csv \
+  --cell-types paper-rf/data/cell_types/connectome_celltype.csv \
+  --out-dir paper-rf/results/cell_types/striatum
 ```
 
 Compare striatal and hippocampal gene-axis structure:
 
 ```bash
-python paper/analyses/transcriptomics/compare_axes.py \
-  --striatum-dir paper/results/transcriptomics/striatum \
-  --hippocampus-dir paper/results/transcriptomics/hippocampus \
-  --out-dir paper/results/transcriptomics/striatum_vs_hippocampus
+python paper-rf/analyses/transcriptomics/compare_axes.py \
+  --striatum-dir paper-rf/results/transcriptomics/striatum \
+  --hippocampus-dir paper-rf/results/transcriptomics/hippocampus \
+  --out-dir paper-rf/results/transcriptomics/striatum_vs_hippocampus
 ```
 
 Create manuscript-style biological figure panels:
 
 ```bash
-python paper/analyses/plotting/plot_biological_figures.py \
-  --results-root paper/results \
-  --out-dir paper/figures/biological
+python paper-rf/analyses/plotting/plot_biological_figures.py \
+  --results-root paper-rf/results \
+  --out-dir paper-rf/figures/biological
 ```
 
 The end-to-end convenience wrapper runs the parameter export, transcriptomics,
@@ -106,30 +106,30 @@ filters:
   `ks_pvalue < 0.001`
 
 ```bash
-bash paper/run_paper_analyses.sh
+bash paper-rf/run_paper_analyses.sh
 ```
 
 To also regenerate full KEGG/GSEA outputs before plotting, run:
 
 ```bash
-RUN_GSEA=1 bash paper/run_paper_analyses.sh
+RUN_GSEA=1 bash paper-rf/run_paper_analyses.sh
 ```
 
 By default, the hippocampus analysis uses the DIFF-RF run initialized with
 striatal posterior-derived priors for global parameters (`rho`, `alpha`, and
 `sigma`). To use the normal hippocampus merge instead, override `HIPPO_RUN`.
 
-Generated tables are written under `paper/results/`, and generated figures are
-written under `paper/figures/`. Both directories are ignored by git.
+Generated tables are written under `paper-rf/results/`, and generated figures are
+written under `paper-rf/figures/`. Both directories are ignored by git.
 
 Filter-specific analyses are emitted under:
 
-- `paper/results/filtering/all/`
-- `paper/results/filtering/beta_positive/`
-- `paper/results/filtering/updated/`
-- `paper/figures/biological/filtering_levels/all/`
-- `paper/figures/biological/filtering_levels/beta_positive/`
-- `paper/figures/biological/filtering_levels/updated/`
+- `paper-rf/results/filtering/all/`
+- `paper-rf/results/filtering/beta_positive/`
+- `paper-rf/results/filtering/updated/`
+- `paper-rf/figures/biological/filtering_levels/all/`
+- `paper-rf/figures/biological/filtering_levels/beta_positive/`
+- `paper-rf/figures/biological/filtering_levels/updated/`
 
 Each filter-level folder contains striatal and hippocampal PCA outputs,
 striatum/hippocampus comparison outputs, cell-type outputs, and GSEA outputs when
@@ -144,7 +144,7 @@ filter-level figure folder:
 The raw regional `beta`/`gamma` comparison does not depend on the transcriptomic
 filter and is emitted once under:
 
-- `paper/figures/biological/shared/`
+- `paper-rf/figures/biological/shared/`
 
 ## Provenance
 

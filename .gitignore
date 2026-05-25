@@ -2,9 +2,9 @@ runs/
 outputs/
 .julia_depot/
 logs/
-paper/python/.venv/
-paper/results/
-paper/figures/
+paper-rf/python/.venv/
+paper-rf/results/
+paper-rf/figures/
 .DS_Store
 *.jlso
 *.jld2

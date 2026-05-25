@@ -44,7 +44,7 @@
 
 - identify processed striatal fitting-ready dataset
 - identify processed hippocampal fitting-ready dataset
-- copy only required files into `data/paper/`
+- copy only required files into `paper-rf/data/`
 - document provenance of each kept file
 
 ## Phase 6: Validation

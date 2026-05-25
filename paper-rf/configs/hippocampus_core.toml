@@ -1,0 +1,23 @@
+[model]
+name = "DIFF"
+transport = "retrograde"
+parameter_sharing = "independent"
+
+[data]
+network = "paper-rf/data/hippocampus/network.csv"
+observations = "paper-rf/data/hippocampus/observations.csv"
+
+[seeding]
+seed_indices = [53, 55, 56]
+infer_seed = true
+
+[inference]
+n_chains = 1
+target_acceptance = 0.65
+sampler = "NUTS"
+n_samples = 1000
+n_warmup = 1000
+mean_data = false
+
+[holdout]
+strategy = "none"

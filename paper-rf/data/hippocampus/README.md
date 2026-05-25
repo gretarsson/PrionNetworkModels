@@ -3,7 +3,7 @@
 This folder contains the fitting-ready hippocampal pSyn dataset ported from the legacy `synuclein_spread` workflow.
 
 - `observations.csv` comes from `synuclein_spread/data/hippocampal/hippocampal_syn_only.csv`.
-- `network.csv` is the filtered labeled connectome used by the legacy hippocampus jobs. It is identical to `data/paper/striatum/network.csv` in this repository and was copied here so the hippocampus bundle is self-contained.
+- `network.csv` is the filtered labeled connectome used by the legacy hippocampus jobs. It is identical to `paper-rf/data/striatum/network.csv` in this repository and was copied here so the hippocampus bundle is self-contained.
 
 The legacy hippocampus jobs used seed indices `[53, 55, 56]`, corresponding to:
 

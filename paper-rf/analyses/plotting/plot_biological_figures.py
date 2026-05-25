@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate manuscript-style biological figure panels from paper/results tables."""
+"""Generate manuscript-style biological figure panels from paper-rf/results tables."""
 
 from __future__ import annotations
 
@@ -520,8 +520,8 @@ def plot_dataset(result_dir: Path, cell_dir: Path, enrichment_dir: Path | None, 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--results-root", default="paper/results")
-    parser.add_argument("--out-dir", default="paper/figures/biological")
+    parser.add_argument("--results-root", default="paper-rf/results")
+    parser.add_argument("--out-dir", default="paper-rf/figures/biological")
     parser.add_argument("--regional-only", action="store_true")
     args = parser.parse_args()
 

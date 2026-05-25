@@ -103,7 +103,7 @@ function main()
     run_dir = get_arg("--run", nothing)
     out_dir = get_arg("--out-dir", nothing)
     alpha = parse(Float64, get_arg("--update-alpha", "0.001"))
-    isnothing(run_dir) && error("Usage: export_parameter_tables.jl --run runs/RUN_ID --out-dir paper/results/parameters/RUN_ID")
+    isnothing(run_dir) && error("Usage: export_parameter_tables.jl --run runs/RUN_ID --out-dir paper-rf/results/parameters/RUN_ID")
     isnothing(out_dir) && error("Missing --out-dir")
 
     mkpath(out_dir)

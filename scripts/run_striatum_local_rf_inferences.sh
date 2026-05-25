@@ -6,7 +6,7 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 "$PROJECT_DIR/cluster/prepare_julia_env.sh"
 
 JOBNAME="striatum_LOCAL-RF"
-CONFIG="configs/paper/striatum_local_rf_core.toml"
+CONFIG="paper-rf/configs/striatum_local_rf_core.toml"
 LOCAL_RF_CHAINS="${LOCAL_RF_CHAINS:-4}"
 SLURM_PARTITION="${SLURM_PARTITION:-all}"
 SLURM_TIME="${SLURM_TIME:-2-00:00:00}"

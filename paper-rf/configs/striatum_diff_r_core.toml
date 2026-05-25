@@ -1,11 +1,11 @@
 [model]
-name = "DIFF-RF"
+name = "DIFF-R"
 transport = "retrograde"
 parameter_sharing = "independent"
 
 [data]
-network = "data/paper/striatum/network.csv"
-observations = "data/paper/striatum/observations.csv"
+network = "paper-rf/data/striatum/network.csv"
+observations = "paper-rf/data/striatum/observations.csv"
 
 [seeding]
 seed_indices = [74]
