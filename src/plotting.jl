@@ -653,6 +653,112 @@ function retrodiction_plots(obs, output_dir::AbstractString; run_dir::Union{Noth
 
         savefig(plt, joinpath(output_dir, "retrodiction_$(obs.labels[i]).pdf"))
     end
+    retrodiction_top_pathology_panels(obs, joinpath(output_dir, "top_pathology_panels"); smooth = smooth)
+    return output_dir
+end
+
+function observed_peak_burden(obs)
+    peaks = fill(-Inf, length(obs.labels))
+    for i in eachindex(obs.labels)
+        values = obs.mean[i, :]
+        finite_values = values[isfinite.(values)]
+        peaks[i] = isempty(finite_values) ? -Inf : maximum(finite_values)
+    end
+    return peaks
+end
+
+function retrodiction_top_pathology_panels(obs, output_dir::AbstractString; smooth = nothing, n_panels::Int=3, regions_per_panel::Int=4)
+    mkpath(output_dir)
+
+    peaks = observed_peak_burden(obs)
+    ranked = sortperm(peaks; rev = true)
+    ranked = ranked[isfinite.(peaks[ranked])]
+
+    observed_color = RGB(0 / 255, 71 / 255, 171 / 255)
+    total_regions = min(length(ranked), n_panels * regions_per_panel)
+    isempty(ranked) && return output_dir
+
+    for panel_idx in 1:ceil(Int, total_regions / regions_per_panel)
+        start_idx = (panel_idx - 1) * regions_per_panel + 1
+        stop_idx = min(panel_idx * regions_per_panel, total_regions)
+        region_indices = ranked[start_idx:stop_idx]
+
+        ymax = maximum(skipmissing(vec(obs.mean[region_indices, :])))
+        if !isnothing(smooth)
+            ymax = max(ymax, maximum(smooth.upper90[region_indices, :]))
+        end
+        ymax = max(ymax, 1e-3) * 1.08
+
+        subplots = Plots.Plot[]
+        for (rank_idx, region_idx) in enumerate(region_indices)
+            rank = start_idx + rank_idx - 1
+            plt = plot(
+                xlabel = "Time",
+                ylabel = "Pathology",
+                title = "#$rank $(obs.labels[region_idx])",
+                legend = rank_idx == 1 ? :topleft : false,
+                ylims = (0.0, ymax),
+                linewidth = 2.5,
+            )
+
+            if !isnothing(smooth)
+                plot!(
+                    plt,
+                    smooth.timepoints,
+                    smooth.mean[region_idx, :];
+                    ribbon = (
+                        smooth.mean[region_idx, :] .- smooth.lower90[region_idx, :],
+                        smooth.upper90[region_idx, :] .- smooth.mean[region_idx, :],
+                    ),
+                    fillalpha = 0.16,
+                    fillcolor = :gray70,
+                    linealpha = 0.0,
+                    label = "90% noise band",
+                )
+                plot!(
+                    plt,
+                    smooth.timepoints,
+                    smooth.mean[region_idx, :];
+                    color = :black,
+                    linewidth = 2.7,
+                    label = "Posterior mean",
+                )
+            end
+
+            scatter!(
+                plt,
+                obs.timepoints,
+                obs.mean[region_idx, :];
+                yerror = obs.se[region_idx, :],
+                label = "Observed mean ± SE",
+                color = observed_color,
+                markersize = 4,
+                markerstrokecolor = :white,
+                markerstrokewidth = 0.6,
+            )
+            push!(subplots, plt)
+        end
+
+        layout = length(region_indices) <= 2 ? (1, length(region_indices)) : (2, 2)
+        panel = plot(
+            subplots...;
+            layout = layout,
+            size = (1100, 820),
+            plot_title = "Top observed pathology regions $(start_idx)-$(stop_idx)",
+        )
+        filename = "top_observed_pathology_$(start_idx)_to_$(stop_idx)"
+        savefig(panel, joinpath(output_dir, "$filename.pdf"))
+        savefig(panel, joinpath(output_dir, "$filename.png"))
+    end
+
+    ranking = DataFrame(
+        rank = collect(1:length(ranked)),
+        region_index = ranked,
+        region = obs.labels[ranked],
+        peak_observed_mean = peaks[ranked],
+    )
+    CSV.write(joinpath(output_dir, "top_observed_pathology_region_ranking.csv"), ranking)
+
     return output_dir
 end
 

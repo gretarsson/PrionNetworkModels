@@ -11,6 +11,7 @@ region_label_style = "allen_mouse_ccfv3"
 [seeding]
 seed_indices = [54]
 infer_seed = false
+infer_local_u0 = true
 
 [inference]
 n_chains = 1

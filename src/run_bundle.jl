@@ -350,7 +350,18 @@ function _resolve_bundle_path(path_str::AbstractString, project_root::AbstractSt
     if isabspath(path_str)
         return String(path_str)
     end
-    return normpath(joinpath(project_root, path_str))
+    resolved = normpath(joinpath(project_root, path_str))
+    if isfile(resolved)
+        return resolved
+    end
+
+    legacy_prefix = "data/paper/"
+    if startswith(path_str, legacy_prefix)
+        migrated = normpath(joinpath(project_root, "paper-rf", "data", path_str[length(legacy_prefix)+1:end]))
+        isfile(migrated) && return migrated
+    end
+
+    return resolved
 end
 
 function _is_subpath(path::AbstractString, root::AbstractString)
