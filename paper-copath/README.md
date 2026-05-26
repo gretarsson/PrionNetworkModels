@@ -53,3 +53,43 @@ without editing the script:
 ```bash
 LOCAL_RF_CHAINS=2 SLURM_TIME=1-00:00:00 bash paper-copath/run_copath_inferences.sh
 ```
+
+## Independent region-wise RF fits
+
+For the exploratory independent regional model, submit one SLURM array job per
+dataset. Each array task fits one brain region with its own `alpha`, `beta`,
+`gamma`, `u0`, and `sigma`.
+
+```bash
+COPATH_DATASET=syn_mapt bash paper-copath/run_region_rf_copath.sh
+```
+
+Valid datasets are `syn_app`, `syn_mapt`, `tau_app`, and `tau_mapt`. The default
+array is `1-412%40`, so CUBIC can run up to 40 regions at once while each region
+still runs four chains. The default priors used by this exploratory script are:
+
+```text
+alpha ~ Normal+(0, 0.5)
+beta  ~ Normal(0, 1)
+gamma ~ Normal+(0, 0.1)
+u0    ~ Normal+(0, 0.01)
+sigma ~ LogNormal(0, 1)
+```
+
+Outputs are stored under:
+
+```text
+runs/region_rf/copath_<dataset>/
+```
+
+Each region gets its own directory containing `posterior.h5`,
+`posterior_summary.csv`, `diagnostics.csv`, `predictions_train.csv`, and fit/trace
+plots. After the array finishes, collect the per-region outputs into tidy summary
+tables:
+
+```bash
+COPATH_DATASET=syn_mapt bash paper-copath/collect_region_rf_copath.sh
+```
+
+This writes `region_rf_summary.csv` and
+`region_rf_posterior_summary_long.csv` in the dataset output directory.
