@@ -174,6 +174,12 @@ Each dataset folder then contains `region_rf_summary.csv` and
 `region_rf_posterior_summary_long.csv`, while each individual region folder
 keeps its posterior, fit plot, traces, diagnostics, and predictions.
 
+The default priors for these array jobs are `alpha ~ Normal+(0, 1.0)`,
+`beta ~ Normal(0, 1)`, `gamma ~ Normal+(0, 0.1)`,
+`u0 ~ Normal+(0, 0.01)`, and `sigma ~ LogNormal(0, 1)`. The default ODE
+`maxiters` is `50000`, and the script fits all replicate observations unless
+`REGION_RF_MEAN_DATA=1` is set.
+
 ## Provenance
 
 This layer ports the relevant analysis logic from:

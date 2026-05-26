@@ -70,12 +70,16 @@ run up to 40 regions at once while each region still runs four chains. The
 default priors used by this exploratory script are:
 
 ```text
-alpha ~ Normal+(0, 0.5)
+alpha ~ Normal+(0, 1.0)
 beta  ~ Normal(0, 1)
 gamma ~ Normal+(0, 0.1)
 u0    ~ Normal+(0, 0.01)
 sigma ~ LogNormal(0, 1)
 ```
+
+The default ODE `maxiters` for these array jobs is `50000`. The script uses all
+replicate observations by default; set `REGION_RF_MEAN_DATA=1` only if you want
+to fit to timepoint means instead.
 
 Outputs are stored under:
 
