@@ -38,13 +38,13 @@ if [[ ${#EXTRA_FLAGS[@]} -gt 0 ]]; then
 fi
 
 echo "Submitting paper-rf REGION-RF arrays."
-echo "Output root: $PROJECT_DIR/paper-rf/results/region_rf"
+echo "Output root: $PROJECT_DIR/runs/region_rf"
 echo "Array per dataset: 1-412%$MAX_CONCURRENT, chains=$CHAINS, samples=$SAMPLES, warmup=$WARMUP"
 
 for spec in "${DATASETS[@]}"; do
   IFS=: read -r dataset observations network <<< "$spec"
   run_prefix="${dataset}_REGION-RF"
-  out_root="paper-rf/results/region_rf/${dataset}"
+  out_root="runs/region_rf/${dataset}"
   job_name="${dataset}_regionrf"
 
   echo "Submitting $dataset -> $out_root"

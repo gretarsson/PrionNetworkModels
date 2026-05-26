@@ -42,14 +42,14 @@ if [[ ${#EXTRA_FLAGS[@]} -gt 0 ]]; then
 fi
 
 echo "Submitting copath REGION-RF arrays."
-echo "Output root: $PROJECT_DIR/paper-copath/results/region_rf"
+echo "Output root: $PROJECT_DIR/runs/region_rf"
 echo "Array per dataset: 1-412%$MAX_CONCURRENT, chains=$CHAINS, samples=$SAMPLES, warmup=$WARMUP"
 
 for spec in "${DATASETS[@]}"; do
   dataset="${spec%%:*}"
   observations="${spec#*:}"
   run_prefix="copath_${dataset}_REGION-RF"
-  out_root="paper-copath/results/region_rf/copath_${dataset}"
+  out_root="runs/region_rf/copath_${dataset}"
   job_name="copath_${dataset}_regionrf"
 
   echo "Submitting $dataset -> $out_root"

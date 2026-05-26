@@ -80,7 +80,7 @@ sigma ~ LogNormal(0, 1)
 Outputs are stored under:
 
 ```text
-paper-copath/results/region_rf/copath_<dataset>/
+runs/region_rf/copath_<dataset>/
 ```
 
 Each region gets its own directory containing `posterior.h5`,

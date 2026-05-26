@@ -160,8 +160,8 @@ hippocampal dataset. Each array task fits one brain region with its own `alpha`,
 `beta`, `gamma`, `u0`, and `sigma`. Outputs are stored under:
 
 ```text
-paper-rf/results/region_rf/striatum/
-paper-rf/results/region_rf/hippocampus/
+runs/region_rf/striatum/
+runs/region_rf/hippocampus/
 ```
 
 After the arrays finish, collect the per-region outputs into summary tables:

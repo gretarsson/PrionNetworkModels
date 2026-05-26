@@ -11,7 +11,7 @@ fi
 export JULIA_DEPOT_PATH="${JULIA_DEPOT_PATH:-$PROJECT_DIR/.julia_depot}"
 
 for dataset in "${DATASETS[@]}"; do
-  root="$PROJECT_DIR/paper-copath/results/region_rf/copath_${dataset}"
+  root="$PROJECT_DIR/runs/region_rf/copath_${dataset}"
   if [[ ! -d "$root" ]]; then
     echo "Skipping $dataset; output directory does not exist: $root"
     continue
