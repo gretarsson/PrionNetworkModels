@@ -146,6 +146,34 @@ filter and is emitted once under:
 
 - `paper-rf/figures/biological/shared/`
 
+## Independent Region-Wise RF Fits
+
+For exploratory independent regional fits, submit striatum and hippocampus with
+one script:
+
+```bash
+bash paper-rf/run_region_rf_paper_rf.sh
+```
+
+This submits one SLURM array for the striatal dataset and one for the
+hippocampal dataset. Each array task fits one brain region with its own `alpha`,
+`beta`, `gamma`, `u0`, and `sigma`. Outputs are stored under:
+
+```text
+paper-rf/results/region_rf/striatum/
+paper-rf/results/region_rf/hippocampus/
+```
+
+After the arrays finish, collect the per-region outputs into summary tables:
+
+```bash
+bash paper-rf/collect_region_rf_paper_rf.sh
+```
+
+Each dataset folder then contains `region_rf_summary.csv` and
+`region_rf_posterior_summary_long.csv`, while each individual region folder
+keeps its posterior, fit plot, traces, diagnostics, and predictions.
+
 ## Provenance
 
 This layer ports the relevant analysis logic from:

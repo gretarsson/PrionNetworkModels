@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOG_DIR="$PROJECT_DIR/paper-copath/logs"
+LOG_DIR="$PROJECT_DIR/paper-rf/logs"
 mkdir -p "$LOG_DIR"
 
 "$PROJECT_DIR/cluster/prepare_julia_env.sh"
@@ -21,13 +21,9 @@ MEAN_DATA="${REGION_RF_MEAN_DATA:-0}"
 SKIP_TRACES="${REGION_RF_SKIP_TRACES:-0}"
 
 DATASETS=(
-  "syn_app:paper-copath/data/syn_pathology_app.csv"
-  "syn_mapt:paper-copath/data/syn_pathology_mapt.csv"
-  "tau_app:paper-copath/data/tau_pathology_app.csv"
-  "tau_mapt:paper-copath/data/tau_pathology_mapt.csv"
+  "striatum:paper-rf/data/striatum/observations.csv:paper-rf/data/striatum/network.csv"
+  "hippocampus:paper-rf/data/hippocampus/observations.csv:paper-rf/data/hippocampus/network.csv"
 )
-
-NETWORK="paper-copath/data/network.csv"
 
 EXTRA_FLAGS=()
 if [[ "$MEAN_DATA" == "1" ]]; then
@@ -41,16 +37,15 @@ if [[ ${#EXTRA_FLAGS[@]} -gt 0 ]]; then
   printf -v EXTRA_FLAGS_STR ' %q' "${EXTRA_FLAGS[@]}"
 fi
 
-echo "Submitting copath REGION-RF arrays."
-echo "Output root: $PROJECT_DIR/paper-copath/results/region_rf"
+echo "Submitting paper-rf REGION-RF arrays."
+echo "Output root: $PROJECT_DIR/paper-rf/results/region_rf"
 echo "Array per dataset: 1-412%$MAX_CONCURRENT, chains=$CHAINS, samples=$SAMPLES, warmup=$WARMUP"
 
 for spec in "${DATASETS[@]}"; do
-  dataset="${spec%%:*}"
-  observations="${spec#*:}"
-  run_prefix="copath_${dataset}_REGION-RF"
-  out_root="paper-copath/results/region_rf/copath_${dataset}"
-  job_name="copath_${dataset}_regionrf"
+  IFS=: read -r dataset observations network <<< "$spec"
+  run_prefix="${dataset}_REGION-RF"
+  out_root="paper-rf/results/region_rf/${dataset}"
+  job_name="${dataset}_regionrf"
 
   echo "Submitting $dataset -> $out_root"
   sbatch <<EOF
@@ -81,7 +76,7 @@ export MKL_NUM_THREADS=1
 
 exec julia --project="$PROJECT_DIR" "$PROJECT_DIR/scripts/fit_region_rf.jl" \\
   --observations "$PROJECT_DIR/$observations" \\
-  --network "$PROJECT_DIR/$NETWORK" \\
+  --network "$PROJECT_DIR/$network" \\
   --region-index "\$SLURM_ARRAY_TASK_ID" \\
   --samples "$SAMPLES" \\
   --warmup "$WARMUP" \\
@@ -95,4 +90,4 @@ exec julia --project="$PROJECT_DIR" "$PROJECT_DIR/scripts/fit_region_rf.jl" \\
 EOF
 done
 
-echo "Submitted all copath REGION-RF arrays."
+echo "Submitted all paper-rf REGION-RF arrays."

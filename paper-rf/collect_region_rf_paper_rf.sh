@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DATASETS=(syn_app syn_mapt tau_app tau_mapt)
+DATASETS=(striatum hippocampus)
 
 if ! command -v julia >/dev/null 2>&1 && command -v module >/dev/null 2>&1; then
   module load julia
@@ -11,7 +11,7 @@ fi
 export JULIA_DEPOT_PATH="${JULIA_DEPOT_PATH:-$PROJECT_DIR/.julia_depot}"
 
 for dataset in "${DATASETS[@]}"; do
-  root="$PROJECT_DIR/paper-copath/results/region_rf/copath_${dataset}"
+  root="$PROJECT_DIR/paper-rf/results/region_rf/${dataset}"
   if [[ ! -d "$root" ]]; then
     echo "Skipping $dataset; output directory does not exist: $root"
     continue
