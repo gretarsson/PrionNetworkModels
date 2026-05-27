@@ -319,6 +319,18 @@ function region_means_from_wide(path::AbstractString)
     return means
 end
 
+function region_log10p1_means_from_wide(path::AbstractString)
+    df = CSV.read(path, DataFrame)
+    means = Dict{String,Float64}()
+    for col in names(df)[3:end]
+        values = collect(skipmissing(maybe_float.(df[!, col])))
+        values = values[isfinite.(values)]
+        isempty(values) && continue
+        means[String(col)] = mean(log10.(1 .+ max.(values, 0.0)))
+    end
+    return means
+end
+
 function add_amyloid_columns!(df::DataFrame, project_root::AbstractString, protein::AbstractString)
     data_dir = joinpath(project_root, "paper-copath", "data")
     # Available amyloid tables are from APP/MAPTApp KI mice only, with injected
@@ -329,6 +341,10 @@ function add_amyloid_columns!(df::DataFrame, project_root::AbstractString, prote
     ab42_treatment = region_means_from_wide(joinpath(data_dir, "ab42_pathology_$(treatment).csv"))
     ab40_control = region_means_from_wide(joinpath(data_dir, "ab40_pathology_control.csv"))
     ab42_control = region_means_from_wide(joinpath(data_dir, "ab42_pathology_control.csv"))
+    ab40_treatment_log = region_log10p1_means_from_wide(joinpath(data_dir, "ab40_pathology_$(treatment).csv"))
+    ab42_treatment_log = region_log10p1_means_from_wide(joinpath(data_dir, "ab42_pathology_$(treatment).csv"))
+    ab40_control_log = region_log10p1_means_from_wide(joinpath(data_dir, "ab40_pathology_control.csv"))
+    ab42_control_log = region_log10p1_means_from_wide(joinpath(data_dir, "ab42_pathology_control.csv"))
 
     df.abeta_treatment = fill(treatment, nrow(df))
     df.ab40_treatment_mean = [get(ab40_treatment, r, NaN) for r in df.region]
@@ -339,13 +355,19 @@ function add_amyloid_columns!(df::DataFrame, project_root::AbstractString, prote
     df.ab42_diff_treatment_minus_control = df.ab42_treatment_mean .- df.ab42_control_mean
     df.ab40_diff_log10p1 = log10.(1 .+ max.(df.ab40_treatment_mean, 0.0)) .- log10.(1 .+ max.(df.ab40_control_mean, 0.0))
     df.ab42_diff_log10p1 = log10.(1 .+ max.(df.ab42_treatment_mean, 0.0)) .- log10.(1 .+ max.(df.ab42_control_mean, 0.0))
+    df.ab40_treatment_mean_log10p1 = [get(ab40_treatment_log, r, NaN) for r in df.region]
+    df.ab42_treatment_mean_log10p1 = [get(ab42_treatment_log, r, NaN) for r in df.region]
+    df.ab40_control_mean_log10p1 = [get(ab40_control_log, r, NaN) for r in df.region]
+    df.ab42_control_mean_log10p1 = [get(ab42_control_log, r, NaN) for r in df.region]
+    df.ab40_diff_mean_log10p1 = df.ab40_treatment_mean_log10p1 .- df.ab40_control_mean_log10p1
+    df.ab42_diff_mean_log10p1 = df.ab42_treatment_mean_log10p1 .- df.ab42_control_mean_log10p1
     return df
 end
 
 function amyloid_correlation_stats(df::DataFrame, protein::AbstractString)
     rows = []
     for amyloid in ["ab40", "ab42"]
-        xcol = Symbol("$(amyloid)_diff_log10p1")
+        xcol = Symbol("$(amyloid)_diff_mean_log10p1")
         for param in ["alpha", "beta", "gamma"]
             ycol = Symbol("$(param)_diff_app_minus_mapt")
             rhat_app = Symbol("$(param)_rhat_app")
@@ -393,7 +415,7 @@ function scatter_with_fit!(plt, x, y)
 end
 
 function amyloid_scatter_panels(df::DataFrame, protein::AbstractString, amyloid::AbstractString, figure_dir::AbstractString)
-    xcol = Symbol("$(amyloid)_diff_log10p1")
+    xcol = Symbol("$(amyloid)_diff_mean_log10p1")
     params = ["alpha", "beta", "gamma"]
     active = df.active_any
     subplots = Plots.Plot[]
@@ -407,7 +429,7 @@ function amyloid_scatter_panels(df::DataFrame, protein::AbstractString, amyloid:
         plt = scatter(
             x[.!active],
             y[.!active];
-            xlabel = "$(uppercase(amyloid)) treatment - control log10(1 + burden)",
+            xlabel = "$(uppercase(amyloid)) treatment - control mean log10(1 + burden)",
             ylabel = "$(param) APP - MAPT",
             title = "$(param): r=$(round(r; digits = 2)), p=$(round(p; sigdigits = 2))",
             label = "inactive",

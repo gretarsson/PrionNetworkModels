@@ -138,3 +138,8 @@ reason, the reported A-beta predictor is treatment minus control:
 - synuclein comparisons use `mPFF - none`
 - tau comparisons use `AD PHF - none`
 - A-beta 40 and A-beta 42 are analyzed separately
+
+A-beta values are log-transformed before regional averaging for these
+correlations: the predictor is `mean(log10(1 + treatment)) -
+mean(log10(1 + control))`. This is especially important for A-beta 40, whose
+raw processed values are extremely skewed.
