@@ -6,6 +6,7 @@ paper-rf/python/.venv/
 paper-rf/results/
 paper-rf/figures/
 paper-copath/results/
+paper-copath/figures/region_rf_condition_comparison/
 .DS_Store
 *.jlso
 *.jld2

@@ -129,3 +129,12 @@ paper-copath/figures/region_rf_condition_comparison/
 The analysis reports APP minus MAPT shifts for `alpha`, `beta`, and `gamma`
 using all regions, pathology-active regions, and pathology-active regions whose
 parameter-specific R-hat is at most 1.05 in both conditions.
+
+The same script also relates those APP minus MAPT parameter shifts to regional
+A-beta burden. The available A-beta inputs are APP/MAPTApp KI treatment and
+non-injected control maps, not separate APP and MAPT amyloid maps. For that
+reason, the reported A-beta predictor is treatment minus control:
+
+- synuclein comparisons use `mPFF - none`
+- tau comparisons use `AD PHF - none`
+- A-beta 40 and A-beta 42 are analyzed separately

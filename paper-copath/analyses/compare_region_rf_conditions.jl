@@ -108,6 +108,37 @@ function pearsonr(x, y)
     return cor(x, y)
 end
 
+function rank_average(values::AbstractVector)
+    order = sortperm(values)
+    ranks = zeros(Float64, length(values))
+    i = 1
+    while i <= length(order)
+        j = i
+        while j < length(order) && values[order[j + 1]] == values[order[i]]
+            j += 1
+        end
+        avg_rank = (i + j) / 2
+        for k in i:j
+            ranks[order[k]] = avg_rank
+        end
+        i = j + 1
+    end
+    return ranks
+end
+
+function spearmanr(x, y)
+    length(x) < 3 && return NaN
+    return pearsonr(rank_average(x), rank_average(y))
+end
+
+function correlation_pvalue(r::Real, n::Integer)
+    if n < 3 || !isfinite(r) || abs(r) >= 1
+        return NaN
+    end
+    t = r * sqrt((n - 2) / (1 - r^2))
+    return 2 * ccdf(TDist(n - 2), abs(t))
+end
+
 function paired_stats(df::DataFrame, protein::AbstractString, param::AbstractString, filter_name::AbstractString, mask)
     sub = df[mask, :]
     app = sub[!, Symbol("$(param)_app")]
@@ -269,6 +300,154 @@ function make_plots(df::DataFrame, protein::AbstractString, figure_dir::Abstract
     difference_hist_panels(df, protein, joinpath(figure_dir, "$(protein)_active_difference_histograms"))
 end
 
+function maybe_float(value)
+    ismissing(value) && return missing
+    value isa Number && return Float64(value)
+    parsed = tryparse(Float64, String(value))
+    return isnothing(parsed) ? missing : parsed
+end
+
+function region_means_from_wide(path::AbstractString)
+    df = CSV.read(path, DataFrame)
+    means = Dict{String,Float64}()
+    for col in names(df)[3:end]
+        values = collect(skipmissing(maybe_float.(df[!, col])))
+        values = values[isfinite.(values)]
+        isempty(values) && continue
+        means[String(col)] = mean(values)
+    end
+    return means
+end
+
+function add_amyloid_columns!(df::DataFrame, project_root::AbstractString, protein::AbstractString)
+    data_dir = joinpath(project_root, "paper-copath", "data")
+    # Available amyloid tables are from APP/MAPTApp KI mice only, with injected
+    # treatment and non-injected controls. There is no separate MAPT amyloid
+    # condition in the processed files, so we compare treatment minus control.
+    treatment = protein == "syn" ? "mpff" : "adphf"
+    ab40_treatment = region_means_from_wide(joinpath(data_dir, "ab40_pathology_$(treatment).csv"))
+    ab42_treatment = region_means_from_wide(joinpath(data_dir, "ab42_pathology_$(treatment).csv"))
+    ab40_control = region_means_from_wide(joinpath(data_dir, "ab40_pathology_control.csv"))
+    ab42_control = region_means_from_wide(joinpath(data_dir, "ab42_pathology_control.csv"))
+
+    df.abeta_treatment = fill(treatment, nrow(df))
+    df.ab40_treatment_mean = [get(ab40_treatment, r, NaN) for r in df.region]
+    df.ab42_treatment_mean = [get(ab42_treatment, r, NaN) for r in df.region]
+    df.ab40_control_mean = [get(ab40_control, r, NaN) for r in df.region]
+    df.ab42_control_mean = [get(ab42_control, r, NaN) for r in df.region]
+    df.ab40_diff_treatment_minus_control = df.ab40_treatment_mean .- df.ab40_control_mean
+    df.ab42_diff_treatment_minus_control = df.ab42_treatment_mean .- df.ab42_control_mean
+    df.ab40_diff_log10p1 = log10.(1 .+ max.(df.ab40_treatment_mean, 0.0)) .- log10.(1 .+ max.(df.ab40_control_mean, 0.0))
+    df.ab42_diff_log10p1 = log10.(1 .+ max.(df.ab42_treatment_mean, 0.0)) .- log10.(1 .+ max.(df.ab42_control_mean, 0.0))
+    return df
+end
+
+function amyloid_correlation_stats(df::DataFrame, protein::AbstractString)
+    rows = []
+    for amyloid in ["ab40", "ab42"]
+        xcol = Symbol("$(amyloid)_diff_log10p1")
+        for param in ["alpha", "beta", "gamma"]
+            ycol = Symbol("$(param)_diff_app_minus_mapt")
+            rhat_app = Symbol("$(param)_rhat_app")
+            rhat_mapt = Symbol("$(param)_rhat_mapt")
+            filters = Dict(
+                "all" => trues(nrow(df)),
+                "active_any" => df.active_any,
+                "active_and_param_rhat_le_1_05" => df.active_any .& coalesce.(df[!, rhat_app] .<= 1.05, false) .& coalesce.(df[!, rhat_mapt] .<= 1.05, false),
+            )
+            for (filter_name, filter_mask) in filters
+                finite = filter_mask .& isfinite.(df[!, xcol]) .& isfinite.(df[!, ycol])
+                x = df[finite, xcol]
+                y = df[finite, ycol]
+                pearson = pearsonr(x, y)
+                spearman = spearmanr(x, y)
+                push!(rows, (
+                    protein = protein,
+                    amyloid = amyloid,
+                    parameter = param,
+                    filter = filter_name,
+                    n_regions = length(x),
+                    pearson_r = pearson,
+                    pearson_p = correlation_pvalue(pearson, length(x)),
+                    spearman_r = spearman,
+                    spearman_p = correlation_pvalue(spearman, length(x)),
+                    amyloid_mean = isempty(x) ? NaN : mean(x),
+                    parameter_shift_mean = isempty(y) ? NaN : mean(y),
+                ))
+            end
+        end
+    end
+    return DataFrame(rows)
+end
+
+function scatter_with_fit!(plt, x, y)
+    finite = isfinite.(x) .& isfinite.(y)
+    count(finite) < 3 && return plt
+    xf = x[finite]
+    yf = y[finite]
+    X = hcat(ones(length(xf)), xf)
+    coef = X \ yf
+    xs = collect(range(minimum(xf), maximum(xf); length = 200))
+    plot!(plt, xs, coef[1] .+ coef[2] .* xs; color = :black, linewidth = 2.0, label = false)
+    return plt
+end
+
+function amyloid_scatter_panels(df::DataFrame, protein::AbstractString, amyloid::AbstractString, figure_dir::AbstractString)
+    xcol = Symbol("$(amyloid)_diff_log10p1")
+    params = ["alpha", "beta", "gamma"]
+    active = df.active_any
+    subplots = Plots.Plot[]
+    for param in params
+        ycol = Symbol("$(param)_diff_app_minus_mapt")
+        x = df[!, xcol]
+        y = df[!, ycol]
+        mask = active .& isfinite.(x) .& isfinite.(y)
+        r = pearsonr(x[mask], y[mask])
+        p = correlation_pvalue(r, count(mask))
+        plt = scatter(
+            x[.!active],
+            y[.!active];
+            xlabel = "$(uppercase(amyloid)) treatment - control log10(1 + burden)",
+            ylabel = "$(param) APP - MAPT",
+            title = "$(param): r=$(round(r; digits = 2)), p=$(round(p; sigdigits = 2))",
+            label = "inactive",
+            color = :gray70,
+            markersize = 3,
+            alpha = 0.45,
+            markerstrokewidth = 0,
+        )
+        scatter!(
+            plt,
+            x[active],
+            y[active];
+            label = "active",
+            color = RGB(0 / 255, 71 / 255, 171 / 255),
+            markersize = 4,
+            alpha = 0.75,
+            markerstrokecolor = :white,
+            markerstrokewidth = 0.4,
+        )
+        hline!(plt, [0.0]; color = :black, linestyle = :dash, linewidth = 1.4, label = false)
+        scatter_with_fit!(plt, x[mask], y[mask])
+        push!(subplots, plt)
+    end
+    panel = plot(
+        subplots...;
+        layout = (1, 3),
+        size = (1400, 430),
+        plot_title = "$(uppercase(protein)) REGION-RF APP - MAPT shifts vs $(uppercase(amyloid))",
+    )
+    out = joinpath(figure_dir, "$(protein)_$(amyloid)_amyloid_vs_parameter_shifts")
+    savefig(panel, out * ".pdf")
+    savefig(panel, out * ".png")
+end
+
+function amyloid_plots(df::DataFrame, protein::AbstractString, figure_dir::AbstractString)
+    for amyloid in ["ab40", "ab42"]
+        amyloid_scatter_panels(df, protein, amyloid, figure_dir)
+    end
+end
+
 function main()
     project_root = abspath(get_arg("--project-root", dirname(dirname(@__DIR__))))
     out_dir = get_arg("--out-dir", joinpath(project_root, "paper-copath", "results", "region_rf_condition_comparison"))
@@ -277,14 +456,19 @@ function main()
     mkpath(figure_dir)
 
     summaries = DataFrame()
+    amyloid_summaries = DataFrame()
     for protein in ["syn", "tau"]
         df = comparison_table(project_root, protein)
+        add_amyloid_columns!(df, project_root, protein)
         CSV.write(joinpath(out_dir, "$(protein)_app_vs_mapt_region_parameters.csv"), df)
         stats = summary_stats(df, protein)
         append!(summaries, stats; cols = :union)
+        append!(amyloid_summaries, amyloid_correlation_stats(df, protein); cols = :union)
         make_plots(df, protein, figure_dir)
+        amyloid_plots(df, protein, figure_dir)
     end
     CSV.write(joinpath(out_dir, "app_vs_mapt_parameter_shift_summary.csv"), summaries)
+    CSV.write(joinpath(out_dir, "amyloid_vs_parameter_shift_correlations.csv"), amyloid_summaries)
     println(out_dir)
 end
 
