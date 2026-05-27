@@ -39,6 +39,13 @@ function pathology_peaks(observations::AbstractString, network::AbstractString)
     return DataFrame(region_index = collect(eachindex(pathology.labels)), region = pathology.labels, peak = peaks)
 end
 
+function finite_pair_max(a, b)
+    vals = Float64[]
+    isfinite(a) && push!(vals, Float64(a))
+    isfinite(b) && push!(vals, Float64(b))
+    return isempty(vals) ? NaN : maximum(vals)
+end
+
 function parameter_rhats(root::AbstractString, suffix::AbstractString)
     posterior = ensure_posterior_summary(root)
     keep = in.(posterior.parameter, Ref(["alpha", "beta", "gamma"]))
@@ -68,9 +75,10 @@ function comparison_table(project_root::AbstractString, protein::AbstractString)
     peaks_mapt = rename(pathology_peaks(mapt_obs, network), :peak => :peak_mapt)
     df = leftjoin(df, peaks_app, on = [:region_index, :region])
     df = leftjoin(df, peaks_mapt, on = [:region_index, :region])
-    df.peak_any = max.(coalesce.(df.peak_app, -Inf), coalesce.(df.peak_mapt, -Inf))
-    df.active_any = coalesce.(df.peak_any .> 0, false)
-    rank_idx = sortperm(df.peak_any; rev = true)
+    df.peak_any = finite_pair_max.(df.peak_app, df.peak_mapt)
+    df.active_any = isfinite.(df.peak_any) .& (df.peak_any .> 0)
+    rank_values = ifelse.(isfinite.(df.peak_any), df.peak_any, -Inf)
+    rank_idx = sortperm(rank_values; rev = true)
     condition_rank = similar(df.region_index)
     for (rank, idx) in enumerate(rank_idx)
         condition_rank[idx] = rank

@@ -88,8 +88,20 @@ function observed_peak_ranking(obs)
         peaks[i] = isempty(finite_values) ? -Inf : maximum(finite_values)
     end
     ranked = sortperm(peaks; rev = true)
-    ranked = ranked[isfinite.(peaks[ranked])]
-    return ranked, peaks
+    ranks = similar(ranked)
+    for (rank, region_idx) in enumerate(ranked)
+        ranks[region_idx] = rank
+    end
+    finite_ranked = ranked[isfinite.(peaks[ranked])]
+    return finite_ranked, ranks, peaks
+end
+
+function apply_observed_ranks!(diagnostics::DataFrame, obs)
+    _, ranks, peaks = observed_peak_ranking(obs)
+    diagnostics.observed_peak_mean = peaks[diagnostics.region_index]
+    diagnostics.rank = ranks[diagnostics.region_index]
+    sort!(diagnostics, [:region_index])
+    return diagnostics
 end
 
 function assemble_predictions(diagnostics::DataFrame, obs)
@@ -319,7 +331,7 @@ end
 
 function retrodiction_panels(obs, smooth, output_dir::AbstractString; n_panels::Int = 3, regions_per_panel::Int = 4)
     mkpath(output_dir)
-    ranked, peaks = observed_peak_ranking(obs)
+    ranked, _, peaks = observed_peak_ranking(obs)
     total_regions = min(length(ranked), n_panels * regions_per_panel)
     observed_color = RGB(0 / 255, 71 / 255, 171 / 255)
 
@@ -434,6 +446,11 @@ function main()
             se = summary.se,
             n = summary.n,
         )
+    end
+    apply_observed_ranks!(diagnostics, obs)
+    rank_map = Dict(row.region_index => row.rank for row in eachrow(diagnostics))
+    if "rank" in names(posterior)
+        posterior.rank = [rank_map[row.region_index] for row in eachrow(posterior)]
     end
 
     mkpath(out_dir)

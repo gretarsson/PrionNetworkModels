@@ -41,8 +41,11 @@ function observed_peak_ranking(pathology)
         peaks[i] = isempty(finite_values) ? -Inf : maximum(finite_values)
     end
     ranked = sortperm(peaks; rev = true)
-    ranked = ranked[isfinite.(peaks[ranked])]
-    return ranked, peaks, summary
+    ranks = similar(ranked)
+    for (rank, region_idx) in enumerate(ranked)
+        ranks[region_idx] = rank
+    end
+    return ranked, ranks, peaks, summary
 end
 
 function region_observations(data, region_idx::Integer; mean_data::Bool=false)
@@ -313,7 +316,7 @@ function main()
     skip_traces = has_flag("--skip-traces")
 
     pathology = process_pathology(observations; network_csv = network)
-    ranked, peaks, summary = observed_peak_ranking(pathology)
+    ranked, ranks, peaks, summary = observed_peak_ranking(pathology)
     selected = if !isnothing(region_index_arg)
         [parse(Int, region_index_arg)]
     elseif !isnothing(regions_arg)
@@ -325,8 +328,7 @@ function main()
 
     rows = DataFrame()
     for (position, region_idx) in enumerate(selected)
-        rank = findfirst(==(region_idx), ranked)
-        rank = isnothing(rank) ? position : rank
+        rank = ranks[region_idx]
         println("Fitting rank $rank region $region_idx ($(pathology.labels[region_idx])); peak observed mean = $(peaks[region_idx])")
         diagnostics = fit_region(
             pathology,
