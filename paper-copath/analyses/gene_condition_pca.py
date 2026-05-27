@@ -123,10 +123,94 @@ def gene_correlations(df: pd.DataFrame, gene_cols: list[str], eta: np.ndarray) -
     return out.sort_values("r", ascending=False)
 
 
+def save_figure(fig: plt.Figure, out_path: Path) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path.with_suffix(".png"), dpi=300, bbox_inches="tight")
+    fig.savefig(out_path.with_suffix(".pdf"), bbox_inches="tight")
+    plt.close(fig)
+
+
+def style_axis(ax) -> None:
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+
+def plot_gene_coefficients(condition_dir: Path, figure_dir: Path, label: str) -> None:
+    coefs = pd.read_csv(condition_dir / "gene_parameter_coefficients.csv")
+    corr = pd.read_csv(condition_dir / "gene_eta_correlations.csv")[["gene", "r"]]
+    pca_summary = pd.read_csv(condition_dir / "pca_summary.csv")
+    pc1 = pca_summary.iloc[0]
+    pca_fit = PCA(n_components=2).fit(coefs[["coef_beta", "coef_gamma"]].to_numpy())
+    if pca_fit.components_[0, 1] < 0:
+        pca_fit.components_[0, :] *= -1
+    pc2 = pca_fit.components_[1, :]
+    pc2_var = pca_fit.explained_variance_ratio_[1]
+    df = coefs.merge(corr, on="gene", how="left")
+
+    fig, ax = plt.subplots(figsize=(4.2, 3.8))
+    sc = ax.scatter(
+        df["coef_beta"],
+        df["coef_gamma"],
+        c=df["r"],
+        cmap="coolwarm",
+        s=5,
+        alpha=0.65,
+        rasterized=True,
+    )
+    scale = max(df["coef_beta"].abs().quantile(0.995), df["coef_gamma"].abs().quantile(0.995))
+    ax.plot([0, pc1["loading_beta"] * scale], [0, pc1["loading_gamma"] * scale], color="black", lw=2.0)
+    ax.plot([0, pc2[0] * scale], [0, pc2[1] * scale], color="0.35", lw=1.5, ls="--")
+    ax.axhline(0, color="0.75", lw=0.7)
+    ax.axvline(0, color="0.75", lw=0.7)
+    ax.set_xlabel(r"coefficient for $z(\beta)$")
+    ax.set_ylabel(r"coefficient for $z(\gamma)$")
+    ax.set_title(f"{label}: gene coefficient PCA")
+    ax.text(
+        0.04,
+        0.96,
+        f"PC1: {100 * pc1['explained_variance_ratio']:.1f}%\nPC2: {100 * pc2_var:.1f}%",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=9,
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.72, "pad": 2.5},
+    )
+    cbar = fig.colorbar(sc, ax=ax, pad=0.02)
+    cbar.set_label(r"corr(gene, $\eta$)")
+    style_axis(ax)
+    save_figure(fig, figure_dir / "pca_gene_coefficients")
+
+
+def plot_beta_gamma_eta(condition_dir: Path, figure_dir: Path, label: str) -> None:
+    df = pd.read_csv(condition_dir / "region_axis.csv")
+    pca = pd.read_csv(condition_dir / "pca_summary.csv").iloc[0]
+    fig, ax = plt.subplots(figsize=(4.2, 3.8))
+    sc = ax.scatter(df["z_beta"], df["z_gamma"], c=df["eta"], cmap="viridis", s=45, edgecolor="white", linewidth=0.4)
+    ax.axhline(0, color="0.75", lw=0.7)
+    ax.axvline(0, color="0.75", lw=0.7)
+    ax.set_xlabel(r"$z(\beta)$")
+    ax.set_ylabel(r"$z(\gamma)$")
+    ax.set_title(f"{label}: vulnerability axis")
+    ax.text(
+        0.02,
+        0.98,
+        rf"$\eta={pca['loading_beta']:.2f}z(\beta)+{pca['loading_gamma']:.2f}z(\gamma)$",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=9,
+    )
+    cbar = fig.colorbar(sc, ax=ax, pad=0.02)
+    cbar.set_label(r"$\eta$")
+    style_axis(ax)
+    save_figure(fig, figure_dir / "beta_gamma_colored_by_eta")
+
+
 def run_condition(
     comparison_dir: Path,
     expression: pd.DataFrame,
     out_dir: Path,
+    figure_dir: Path,
     protein: str,
     condition: str,
     active_only: bool,
@@ -146,6 +230,7 @@ def run_condition(
     coefs["pc1_score"] = coefs[["coef_beta", "coef_gamma"]].to_numpy() @ pc1
 
     condition_dir = out_dir / f"{protein}_{condition}"
+    condition_figure_dir = figure_dir / f"{protein}_{condition}"
     condition_dir.mkdir(parents=True, exist_ok=True)
     params.to_csv(condition_dir / "filtered_parameters.csv", index=False)
     merged[["region", "region_base", "hemi", "beta", "gamma", "z_beta", "z_gamma", "eta"]].to_csv(
@@ -163,6 +248,10 @@ def run_condition(
             "n_genes": [len(coefs), len(coefs)],
         }
     ).to_csv(condition_dir / "pca_summary.csv", index=False)
+
+    label = f"{protein.upper()} {condition.upper()}"
+    plot_gene_coefficients(condition_dir, condition_figure_dir, label)
+    plot_beta_gamma_eta(condition_dir, condition_figure_dir, label)
 
     return {
         "protein": protein,
@@ -243,10 +332,7 @@ def plot_direction_comparison(summary: pd.DataFrame, comparison: pd.DataFrame, o
         ax.set_ylim(-0.1, 1.05)
         ax.set_aspect("equal", adjustable="box")
     fig.tight_layout()
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path.with_suffix(".png"), dpi=300)
-    fig.savefig(out_path.with_suffix(".pdf"))
-    plt.close(fig)
+    save_figure(fig, out_path)
 
 
 def main() -> None:
@@ -273,6 +359,7 @@ def main() -> None:
                     Path(args.comparison_dir),
                     expression,
                     out_dir,
+                    Path(args.figure_dir),
                     protein,
                     condition,
                     active_only=not args.include_inactive,
