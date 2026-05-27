@@ -179,3 +179,37 @@ paper-rf/python/.venv/bin/python paper-copath/analyses/gene_condition_pca.py \
 
 This writes the same per-condition gene coefficient plots plus plain regional
 parameter-pair panels for beta/gamma, alpha/gamma, and alpha/beta.
+
+## Amyloid Sensitivity Analyses
+
+To ask whether regional amyloid burden predicts how APP changes local RF
+dynamics, run:
+
+```bash
+paper-rf/python/.venv/bin/python paper-copath/analyses/amyloid_sensitivity.py
+```
+
+This analysis starts from the assembled REGION-RF APP-vs-MAPT comparison tables
+and tests whether A-beta 40 or A-beta 42 treatment burden is associated with
+regional shifts in `alpha`, `beta`, and `gamma`. It also summarizes the
+three-parameter APP effect with a PCA axis, compares synuclein and tau APP
+effects, plots example trajectories in high-sensitivity regions, and relates the
+amyloid-sensitivity axis to the same transcriptomic and cell-type resources used
+in `paper-rf`.
+
+Outputs are written to:
+
+```text
+paper-copath/results/amyloid_sensitivity/
+paper-copath/figures/amyloid_sensitivity/
+```
+
+The main tables are:
+
+- `amyloid_parameter_shift_and_pc1_correlations.csv`
+- `amyloid_shift_regressions_adjusted_for_baseline.csv`
+- `delta_parameter_pca_summary.csv`
+- `syn_tau_shift_correlations.csv`
+- `celltype_delta_axis_correlations.csv`
+- `transcriptomics/<protein>/gene_delta_pc1_correlations.csv`
+- `transcriptomics/<protein>/gsea_delta_pc1_all.csv`
