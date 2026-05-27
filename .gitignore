@@ -7,6 +7,7 @@ paper-rf/results/
 paper-rf/figures/
 paper-copath/results/
 paper-copath/figures/region_rf_condition_comparison/
+paper-copath/figures/gene_condition_pca/
 .DS_Store
 *.jlso
 *.jld2

@@ -143,3 +143,27 @@ regional treatment amyloid level, mean `preLimVal`:
 
 Control A-beta summaries are retained in the output tables for reference, but
 the plotted and correlated predictor is the treatment level itself.
+
+## Condition-wise Gene Coefficient PCA
+
+To repeat the paper-style gene coefficient PCA separately for APP and MAPT
+conditions, run:
+
+```bash
+paper-rf/python/.venv/bin/python paper-copath/analyses/gene_condition_pca.py
+```
+
+For each of `syn_app`, `syn_mapt`, `tau_app`, and `tau_mapt`, this fits
+`expression_g ~ z(beta) + z(gamma)` across beta-positive active regions with
+parameter R-hat at most 1.05, then applies PCA to the gene-level
+`(coef_beta, coef_gamma)` cloud. It writes per-condition PCA outputs under:
+
+```text
+paper-copath/results/gene_condition_pca/
+```
+
+and the APP/MAPT PC1 direction comparison under:
+
+```text
+paper-copath/figures/gene_condition_pca/
+```
