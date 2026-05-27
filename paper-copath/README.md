@@ -167,3 +167,15 @@ and the APP/MAPT PC1 direction comparison under:
 ```text
 paper-copath/figures/gene_condition_pca/
 ```
+
+To include alpha in the same condition-wise PCA, run:
+
+```bash
+paper-rf/python/.venv/bin/python paper-copath/analyses/gene_condition_pca.py \
+  --parameters alpha,beta,gamma \
+  --out-dir paper-copath/results/gene_condition_pca_alpha_beta_gamma \
+  --figure-dir paper-copath/figures/gene_condition_pca_alpha_beta_gamma
+```
+
+This writes the same per-condition gene coefficient plots plus plain regional
+parameter-pair panels for beta/gamma, alpha/gamma, and alpha/beta.

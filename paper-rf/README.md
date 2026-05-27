@@ -201,6 +201,18 @@ paper-rf/results/region_rf_gene_pca/
 paper-rf/figures/region_rf_gene_pca/
 ```
 
+To include the local aggregation rate in the same gene-coefficient PCA, run:
+
+```bash
+paper-rf/python/.venv/bin/python paper-rf/analyses/transcriptomics/region_rf_gene_pca.py \
+  --parameters alpha,beta,gamma \
+  --out-dir paper-rf/results/region_rf_gene_pca_alpha_beta_gamma \
+  --figure-dir paper-rf/figures/region_rf_gene_pca_alpha_beta_gamma
+```
+
+This also writes plain regional parameter-pair panels for beta/gamma,
+alpha/gamma, and alpha/beta; those panels are not colored by the inferred axis.
+
 The default priors for these array jobs are `alpha ~ Normal+(0, 1.0)`,
 `beta ~ Normal(0, 1)`, `gamma ~ Normal+(0, 0.1)`,
 `u0 ~ Normal+(0, 0.01)`, and `sigma ~ LogNormal(0, 1)`. The default ODE
