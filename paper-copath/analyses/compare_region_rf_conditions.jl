@@ -264,7 +264,7 @@ end
 function main()
     project_root = abspath(get_arg("--project-root", dirname(dirname(@__DIR__))))
     out_dir = get_arg("--out-dir", joinpath(project_root, "paper-copath", "results", "region_rf_condition_comparison"))
-    figure_dir = get_arg("--figure-dir", joinpath(out_dir, "figures"))
+    figure_dir = get_arg("--figure-dir", joinpath(project_root, "paper-copath", "figures", "region_rf_condition_comparison"))
     mkpath(out_dir)
     mkpath(figure_dir)
 

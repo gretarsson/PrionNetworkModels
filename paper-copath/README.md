@@ -123,6 +123,7 @@ under:
 
 ```text
 paper-copath/results/region_rf_condition_comparison/
+paper-copath/figures/region_rf_condition_comparison/
 ```
 
 The analysis reports APP minus MAPT shifts for `alpha`, `beta`, and `gamma`
