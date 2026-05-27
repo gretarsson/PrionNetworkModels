@@ -87,7 +87,7 @@ Outputs are stored under:
 runs/region_rf/copath_<dataset>/
 ```
 
-Each region gets its own directory containing `posterior.h5`,
+Each region gets its own directory under `regional_runs/` containing `posterior.h5`,
 `posterior_summary.csv`, `diagnostics.csv`, `predictions_train.csv`, and fit/trace
 plots. After the arrays finish, collect all four datasets into tidy summary
 tables with:

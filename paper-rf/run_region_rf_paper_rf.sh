@@ -44,7 +44,7 @@ echo "Array per dataset: 1-412%$MAX_CONCURRENT, chains=$CHAINS, samples=$SAMPLES
 for spec in "${DATASETS[@]}"; do
   IFS=: read -r dataset observations network <<< "$spec"
   run_prefix="${dataset}_REGION-RF"
-  out_root="runs/region_rf/${dataset}"
+  out_root="runs/region_rf/${dataset}/regional_runs"
   job_name="${dataset}_regionrf"
 
   echo "Submitting $dataset -> $out_root"

@@ -172,7 +172,8 @@ bash paper-rf/collect_region_rf_paper_rf.sh
 
 Each dataset folder then contains `region_rf_summary.csv` and
 `region_rf_posterior_summary_long.csv`, while each individual region folder
-keeps its posterior, fit plot, traces, diagnostics, and predictions.
+under `regional_runs/` keeps its posterior, fit plot, traces, diagnostics, and
+predictions.
 
 To build the assembled REGION-RF plots for striatum and hippocampus, run:
 

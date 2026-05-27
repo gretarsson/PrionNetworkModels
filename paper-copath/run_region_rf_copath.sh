@@ -49,7 +49,7 @@ for spec in "${DATASETS[@]}"; do
   dataset="${spec%%:*}"
   observations="${spec#*:}"
   run_prefix="copath_${dataset}_REGION-RF"
-  out_root="runs/region_rf/copath_${dataset}"
+  out_root="runs/region_rf/copath_${dataset}/regional_runs"
   job_name="copath_${dataset}_regionrf"
 
   echo "Submitting $dataset -> $out_root"
