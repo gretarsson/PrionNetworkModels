@@ -21,8 +21,9 @@ function safe_slug(value::AbstractString)
 end
 
 function diagnostics_paths(root::AbstractString)
+    search_root = isdir(joinpath(root, "regional_runs")) ? joinpath(root, "regional_runs") : root
     paths = String[]
-    for (dirpath, _, filenames) in walkdir(root)
+    for (dirpath, _, filenames) in walkdir(search_root)
         "diagnostics.csv" in filenames && push!(paths, joinpath(dirpath, "diagnostics.csv"))
     end
     sort!(paths)
@@ -30,8 +31,9 @@ function diagnostics_paths(root::AbstractString)
 end
 
 function posterior_summary_paths(root::AbstractString)
+    search_root = isdir(joinpath(root, "regional_runs")) ? joinpath(root, "regional_runs") : root
     paths = String[]
-    for (dirpath, _, filenames) in walkdir(root)
+    for (dirpath, _, filenames) in walkdir(search_root)
         if "diagnostics.csv" in filenames && "posterior_summary.csv" in filenames
             push!(paths, joinpath(dirpath, "posterior_summary.csv"))
         end
