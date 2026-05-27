@@ -185,6 +185,22 @@ This writes `predictions_train.csv`, `plots/predicted_vs_observed.*`,
 `plots/diagnostics/`, and `plots/retrodiction/` into each
 `runs/region_rf/<dataset>/` folder.
 
+To repeat the paper-style transcriptomic coefficient PCA on these independent
+REGION-RF maps, run:
+
+```bash
+paper-rf/python/.venv/bin/python paper-rf/analyses/transcriptomics/region_rf_gene_pca.py
+```
+
+This fits `expression_g ~ z(beta) + z(gamma)` separately for the striatum and
+hippocampus REGION-RF maps, using beta-positive active regions with beta/gamma
+R-hat at most 1.05 by default. Outputs are written under:
+
+```text
+paper-rf/results/region_rf_gene_pca/
+paper-rf/figures/region_rf_gene_pca/
+```
+
 The default priors for these array jobs are `alpha ~ Normal+(0, 1.0)`,
 `beta ~ Normal(0, 1)`, `gamma ~ Normal+(0, 0.1)`,
 `u0 ~ Normal+(0, 0.01)`, and `sigma ~ LogNormal(0, 1)`. The default ODE

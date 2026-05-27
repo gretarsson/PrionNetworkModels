@@ -5,6 +5,7 @@ logs/
 paper-rf/python/.venv/
 paper-rf/results/
 paper-rf/figures/
+paper-rf/figures/region_rf_gene_pca/
 paper-copath/results/
 paper-copath/figures/region_rf_condition_comparison/
 paper-copath/figures/gene_condition_pca/
