@@ -16,6 +16,7 @@ from sklearn.decomposition import PCA
 
 PARAMETERS = ["alpha", "beta", "gamma"]
 AMYLOIDS = ["ab40", "ab42"]
+MA_CELLTYPES = ["frac_Dopa", "frac_Nora", "frac_Sero", "frac_Hist"]
 PROTEIN_LABEL = {"syn": "Synuclein", "tau": "Tau"}
 PROTEIN_COLOR = {"syn": "#0047AB", "tau": "#C43616"}
 
@@ -66,6 +67,12 @@ def truncate_label(label: str, max_len: int = 40) -> str:
     return label if len(label) <= max_len else f"{label[: max_len - 1]}..."
 
 
+def clr_transform(x: np.ndarray, eps: float = 1e-6) -> np.ndarray:
+    x = np.asarray(x, dtype=float) + eps
+    logx = np.log(x)
+    return logx - logx.mean(axis=1, keepdims=True)
+
+
 def corr_stats(x, y) -> dict[str, float | int]:
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)
@@ -81,6 +88,32 @@ def corr_stats(x, y) -> dict[str, float | int]:
         "spearman_r": float(sr.statistic),
         "spearman_p": float(sr.pvalue),
     }
+
+
+def cluster_permutation_p(x: np.ndarray, y: np.ndarray, clusters: np.ndarray, rho_obs: float, n_perm: int, seed: int) -> float:
+    rng = np.random.default_rng(seed)
+    mask = np.isfinite(x) & np.isfinite(y)
+    x = x[mask]
+    y = y[mask]
+    clusters = clusters[mask]
+    if len(x) < 3:
+        return np.nan
+    unique = pd.Index(pd.unique(clusters))
+    first = np.array([np.where(clusters == c)[0][0] for c in unique])
+    x_unique = x[first]
+    cluster_to_idx = {cluster: i for i, cluster in enumerate(unique)}
+    inverse = np.array([cluster_to_idx[c] for c in clusters])
+
+    perm_unique = rng.permuted(np.tile(x_unique, (n_perm, 1)), axis=1)
+    permuted_x = perm_unique[:, inverse]
+    rx = stats.rankdata(permuted_x, axis=1)
+    ry = stats.rankdata(y)
+    rx = rx - rx.mean(axis=1, keepdims=True)
+    ry = ry - ry.mean()
+    denom = np.sqrt(np.sum(rx**2, axis=1) * np.sum(ry**2))
+    rho_perm = np.divide(rx @ ry, denom, out=np.zeros(n_perm), where=denom > 0)
+    exceed = int(np.sum(np.abs(rho_perm) >= abs(rho_obs)))
+    return (exceed + 1) / (n_perm + 1)
 
 
 def regression_table(df: pd.DataFrame, protein: str, amyloid: str) -> pd.DataFrame:
@@ -405,32 +438,69 @@ def plot_gsea_dotplot(gsea: pd.DataFrame, figure_dir: Path, top_n: int = 12) -> 
     save_figure(fig, figure_dir / "gene_pathway_delta_pc1_gsea")
 
 
-def celltype_axis_analysis(tables: dict[str, pd.DataFrame], celltype_path: Path, out_dir: Path, figure_dir: Path) -> pd.DataFrame:
+def celltype_axis_analysis(
+    tables: dict[str, pd.DataFrame],
+    celltype_path: Path,
+    out_dir: Path,
+    figure_dir: Path,
+    n_perm: int,
+    seed: int,
+) -> pd.DataFrame:
     cell = pd.read_csv(celltype_path)
     frac_cols = [c for c in cell.columns if c.startswith("frac_") and c != "frac_row_sum"]
     frac = cell[frac_cols].astype(float).to_numpy()
     frac = np.where(np.isfinite(frac), frac, 0)
-    frac = frac + 1e-6
-    clr = np.log(frac) - np.log(frac).mean(axis=1, keepdims=True)
+    clr = clr_transform(frac)
     clr_df = pd.DataFrame(clr, columns=[c.replace("frac_", "clr_") for c in frac_cols])
+    ma_cols = [c for c in MA_CELLTYPES if c in frac_cols]
+    ma_idx = [frac_cols.index(c) for c in ma_cols]
     cell = pd.concat([cell[["node", "region_base"]], clr_df], axis=1)
+    cell["monoaminergic_score"] = clr[:, ma_idx].mean(axis=1)
     clr_cols = list(clr_df.columns)
 
     rows = []
+    mono_rows = []
+    joint_rows = []
+    outcome_labels = ["delta_pc1"] + [f"{p}_diff_app_minus_mapt" for p in PARAMETERS]
     for protein, df in tables.items():
         sub = df[df["active_rhat"]][["region", "delta_pc1"] + [f"{p}_diff_app_minus_mapt" for p in PARAMETERS]].dropna(subset=["delta_pc1"])
         merged = sub.merge(cell, left_on="region", right_on="node", how="inner")
-        outcomes = ["delta_pc1"] + [f"{p}_diff_app_minus_mapt" for p in PARAMETERS]
-        for outcome in outcomes:
+        clusters = merged["region_base"].astype(str).to_numpy()
+        for outcome_idx, outcome in enumerate(outcome_labels):
+            y = merged[outcome].to_numpy(dtype=float)
             for cell_type in clr_cols:
                 x = merged[cell_type].to_numpy(dtype=float)
-                y = merged[outcome].to_numpy(dtype=float)
                 st = corr_stats(x, y)
-                rows.append({"protein": protein, "outcome": outcome, "cell_type": cell_type.replace("clr_", ""), **st})
+                p_perm = cluster_permutation_p(x, y, clusters, float(st["spearman_r"]), n_perm, seed + outcome_idx * 100 + len(rows))
+                rows.append({"protein": protein, "outcome": outcome, "cell_type": cell_type.replace("clr_", ""), **st, "p_perm": p_perm})
+
+            ma = merged["monoaminergic_score"].to_numpy(dtype=float)
+            st = corr_stats(ma, y)
+            p_perm = cluster_permutation_p(ma, y, clusters, float(st["spearman_r"]), n_perm, seed + 10_000 + outcome_idx)
+            mono_rows.append(
+                {
+                    "protein": protein,
+                    "outcome": outcome,
+                    "score": "monoaminergic",
+                    "components": ";".join(ma_cols),
+                    **st,
+                    "p_perm": p_perm,
+                }
+            )
+        joint = merged[["region", "region_base", "delta_pc1"] + [f"{p}_diff_app_minus_mapt" for p in PARAMETERS]].copy()
+        joint["protein"] = protein
+        joint["monoaminergic_score"] = merged["monoaminergic_score"]
+        joint_rows.append(joint)
     out = pd.DataFrame(rows)
-    out["p_fdr"] = out.groupby(["protein", "outcome"])["spearman_p"].transform(lambda s: bh_fdr(s.to_numpy()))
+    out["p_fdr"] = out.groupby(["protein", "outcome"])["p_perm"].transform(lambda s: bh_fdr(s.to_numpy()))
     out.to_csv(out_dir / "celltype_delta_axis_correlations.csv", index=False)
+    mono = pd.DataFrame(mono_rows)
+    mono["p_fdr"] = bh_fdr(mono["p_perm"].to_numpy())
+    mono.to_csv(out_dir / "monoaminergic_delta_axis_stats.csv", index=False)
+    pd.concat(joint_rows, ignore_index=True).to_csv(out_dir / "celltype_delta_axis_joint_table.csv", index=False)
     plot_celltype_heatmap(out, figure_dir)
+    plot_celltype_bars(out, figure_dir)
+    plot_monoaminergic_scores(mono, pd.concat(joint_rows, ignore_index=True), figure_dir)
     return out
 
 
@@ -450,6 +520,67 @@ def plot_celltype_heatmap(corr: pd.DataFrame, figure_dir: Path) -> None:
     fig.colorbar(im, ax=axes, pad=0.02, label="Spearman rho")
     fig.suptitle("Cell-type composition associated with amyloid-sensitive dynamics", y=1.02)
     save_figure(fig, figure_dir / "celltype_delta_axis_heatmap")
+
+
+def plot_celltype_bars(corr: pd.DataFrame, figure_dir: Path) -> None:
+    fig, axes = plt.subplots(2, 2, figsize=(8.8, 7.0), sharex=True)
+    outcomes = ["delta_pc1", "gamma_diff_app_minus_mapt"]
+    clean = {"delta_pc1": "delta-PC1", "gamma_diff_app_minus_mapt": "delta gamma"}
+    for row_idx, protein in enumerate(["syn", "tau"]):
+        for col_idx, outcome in enumerate(outcomes):
+            ax = axes[row_idx, col_idx]
+            sub = corr[(corr["protein"] == protein) & (corr["outcome"] == outcome)].sort_values("spearman_r")
+            labels = sub["cell_type"].to_list()
+            colors = ["#C43616" if x < 0 else "#2C6DB2" for x in sub["spearman_r"]]
+            ax.barh(labels, sub["spearman_r"], color=colors, alpha=0.88)
+            ax.axvline(0, color="black", lw=0.8)
+            ax.set_title(f"{PROTEIN_LABEL[protein]} {clean[outcome]}")
+            ax.set_xlabel("Spearman rho")
+            style_axis(ax)
+    fig.tight_layout()
+    save_figure(fig, figure_dir / "celltype_delta_axis_bars")
+
+
+def plot_monoaminergic_scores(mono: pd.DataFrame, joint: pd.DataFrame, figure_dir: Path) -> None:
+    outcomes = ["delta_pc1", "alpha_diff_app_minus_mapt", "beta_diff_app_minus_mapt", "gamma_diff_app_minus_mapt"]
+    clean = {
+        "delta_pc1": "delta-PC1",
+        "alpha_diff_app_minus_mapt": "delta alpha",
+        "beta_diff_app_minus_mapt": "delta beta",
+        "gamma_diff_app_minus_mapt": "delta gamma",
+    }
+    fig, axes = plt.subplots(2, 4, figsize=(15.2, 6.8), sharey=True)
+    for row_idx, protein in enumerate(["syn", "tau"]):
+        for col_idx, outcome in enumerate(outcomes):
+            ax = axes[row_idx, col_idx]
+            sub = joint[joint["protein"] == protein]
+            stats_row = mono[(mono["protein"] == protein) & (mono["outcome"] == outcome)].iloc[0]
+            x = sub[outcome].to_numpy(dtype=float)
+            y = sub["monoaminergic_score"].to_numpy(dtype=float)
+            ax.scatter(x, y, s=34, color=PROTEIN_COLOR[protein], alpha=0.72, edgecolor="white", linewidth=0.35)
+            finite = np.isfinite(x) & np.isfinite(y)
+            if finite.sum() >= 3:
+                slope, intercept, *_ = stats.linregress(x[finite], y[finite])
+                xx = np.linspace(np.nanmin(x[finite]), np.nanmax(x[finite]), 100)
+                ax.plot(xx, intercept + slope * xx, color="black", lw=1.5)
+            ax.axvline(0, color="0.78", lw=0.8)
+            ax.text(
+                0.04,
+                0.96,
+                rf"$\rho={stats_row['spearman_r']:.2f}$" + f"\nperm p={stats_row['p_perm']:.3g}",
+                transform=ax.transAxes,
+                ha="left",
+                va="top",
+                fontsize=9,
+            )
+            ax.set_title(f"{PROTEIN_LABEL[protein]} {clean[outcome]}")
+            ax.set_xlabel(clean[outcome])
+            if col_idx == 0:
+                ax.set_ylabel("monoaminergic score")
+            style_axis(ax)
+    fig.suptitle("Monoaminergic score vs APP-induced local RF shifts", y=1.02)
+    fig.tight_layout()
+    save_figure(fig, figure_dir / "monoaminergic_score_vs_parameter_shifts")
 
 
 def write_correlations_and_regressions(tables: dict[str, pd.DataFrame], out_dir: Path) -> None:
@@ -481,6 +612,8 @@ def main() -> None:
     parser.add_argument("--gene-sets", default="paper-rf/results/enrichment/striatum/gseapy/gene_sets.gmt")
     parser.add_argument("--out-dir", default="paper-copath/results/amyloid_sensitivity")
     parser.add_argument("--figure-dir", default="paper-copath/figures/amyloid_sensitivity")
+    parser.add_argument("--n-celltype-perm", type=int, default=10000)
+    parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
     out_dir = Path(args.out_dir)
@@ -504,7 +637,7 @@ def main() -> None:
     plot_syn_tau_comparison(tables, figure_dir).to_csv(out_dir / "syn_tau_shift_correlations.csv", index=False)
     plot_trajectory_examples(tables, Path(args.data_dir), Path(args.run_root), figure_dir)
     gene_axis_analysis(tables, Path(args.expression), out_dir / "transcriptomics", figure_dir, Path(args.gene_sets))
-    celltype_axis_analysis(tables, Path(args.cell_types), out_dir, figure_dir)
+    celltype_axis_analysis(tables, Path(args.cell_types), out_dir, figure_dir, args.n_celltype_perm, args.seed)
     print(out_dir)
     print(figure_dir)
 

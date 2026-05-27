@@ -211,5 +211,6 @@ The main tables are:
 - `delta_parameter_pca_summary.csv`
 - `syn_tau_shift_correlations.csv`
 - `celltype_delta_axis_correlations.csv`
+- `monoaminergic_delta_axis_stats.csv`
 - `transcriptomics/<protein>/gene_delta_pc1_correlations.csv`
 - `transcriptomics/<protein>/gsea_delta_pc1_all.csv`
