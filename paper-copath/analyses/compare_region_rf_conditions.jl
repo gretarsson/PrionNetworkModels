@@ -358,7 +358,7 @@ end
 function amyloid_correlation_stats(df::DataFrame, protein::AbstractString)
     rows = []
     for amyloid in ["ab40", "ab42"]
-        xcol = Symbol("$(amyloid)_diff_prelimval")
+        xcol = Symbol("$(amyloid)_treatment_mean_prelimval")
         for param in ["alpha", "beta", "gamma"]
             ycol = Symbol("$(param)_diff_app_minus_mapt")
             rhat_app = Symbol("$(param)_rhat_app")
@@ -406,7 +406,7 @@ function scatter_with_fit!(plt, x, y)
 end
 
 function amyloid_scatter_panels(df::DataFrame, protein::AbstractString, amyloid::AbstractString, figure_dir::AbstractString)
-    xcol = Symbol("$(amyloid)_diff_prelimval")
+    xcol = Symbol("$(amyloid)_treatment_mean_prelimval")
     params = ["alpha", "beta", "gamma"]
     active = df.active_any
     subplots = Plots.Plot[]
@@ -420,7 +420,7 @@ function amyloid_scatter_panels(df::DataFrame, protein::AbstractString, amyloid:
         plt = scatter(
             x[.!active],
             y[.!active];
-            xlabel = "$(uppercase(amyloid)) treatment - control mean preLimVal",
+            xlabel = "$(uppercase(amyloid)) treatment mean preLimVal",
             ylabel = "$(param) APP - MAPT",
             title = "$(param): r=$(round(r; digits = 2)), p=$(round(p; sigdigits = 2))",
             label = "inactive",

@@ -39,10 +39,11 @@ The A-beta inputs are copied from the same archive:
 The source A-beta long tables contain APP/MAPTApp KI injected treatments
 (`mPFF`, `AD PHF`) and non-injected controls (`none`). They do not contain a
 separate MAPT amyloid condition, so downstream APP minus MAPT parameter shifts
-are compared against treatment minus control A-beta burden. The analysis uses
-`preLimVal` from the original long tables because it is already log-transformed.
-The processed wide `ab*_pathology_*.csv` files are retained for provenance but
-are not used by the current REGION-RF condition comparison.
+are compared against the direct treatment A-beta level. The analysis uses
+`preLimVal` from the original long tables because it is already log-transformed;
+control summaries are retained in output tables for reference. The processed
+wide `ab*_pathology_*.csv` files are retained for provenance but are not used by
+the current REGION-RF condition comparison.
 
 The deterministic `LOCAL-RF` initial-condition test uses `u0 = 3.364e-5`,
 the all-region mean pathology at the first striatum timepoint from
