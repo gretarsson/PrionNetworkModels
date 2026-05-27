@@ -5,6 +5,7 @@ logs/
 paper-rf/python/.venv/
 paper-rf/results/
 paper-rf/figures/
+paper-copath/results/
 .DS_Store
 *.jlso
 *.jld2

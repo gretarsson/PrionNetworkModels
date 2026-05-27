@@ -108,3 +108,23 @@ bash paper-copath/plot_region_rf_copath.sh
 This writes `predictions_train.csv`, `plots/predicted_vs_observed.*`,
 `plots/diagnostics/`, and `plots/retrodiction/` into each
 `runs/region_rf/copath_<dataset>/` folder.
+
+## APP vs MAPT REGION-RF Parameter Comparisons
+
+After REGION-RF outputs have been assembled, compare APP and MAPT conditions for
+synuclein and tau with:
+
+```bash
+bash paper-copath/analyze_region_rf_conditions.sh
+```
+
+This writes paired regional comparison tables, summary statistics, and figures
+under:
+
+```text
+paper-copath/results/region_rf_condition_comparison/
+```
+
+The analysis reports APP minus MAPT shifts for `alpha`, `beta`, and `gamma`
+using all regions, pathology-active regions, and pathology-active regions whose
+parameter-specific R-hat is at most 1.05 in both conditions.
