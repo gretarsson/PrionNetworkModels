@@ -98,3 +98,13 @@ bash paper-copath/collect_region_rf_copath.sh
 
 This writes `region_rf_summary.csv` and
 `region_rf_posterior_summary_long.csv` in each dataset output directory.
+
+To build the assembled REGION-RF plots for all four datasets, run:
+
+```bash
+bash paper-copath/plot_region_rf_copath.sh
+```
+
+This writes `predictions_train.csv`, `plots/predicted_vs_observed.*`,
+`plots/diagnostics/`, and `plots/retrodiction/` into each
+`runs/region_rf/copath_<dataset>/` folder.

@@ -174,6 +174,16 @@ Each dataset folder then contains `region_rf_summary.csv` and
 `region_rf_posterior_summary_long.csv`, while each individual region folder
 keeps its posterior, fit plot, traces, diagnostics, and predictions.
 
+To build the assembled REGION-RF plots for striatum and hippocampus, run:
+
+```bash
+bash paper-rf/plot_region_rf_paper_rf.sh
+```
+
+This writes `predictions_train.csv`, `plots/predicted_vs_observed.*`,
+`plots/diagnostics/`, and `plots/retrodiction/` into each
+`runs/region_rf/<dataset>/` folder.
+
 The default priors for these array jobs are `alpha ~ Normal+(0, 1.0)`,
 `beta ~ Normal(0, 1)`, `gamma ~ Normal+(0, 0.1)`,
 `u0 ~ Normal+(0, 0.01)`, and `sigma ~ LogNormal(0, 1)`. The default ODE
