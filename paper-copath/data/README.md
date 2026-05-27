@@ -25,8 +25,10 @@ define region order and to subset the wider 564-column pathology tables.
 These inputs are intentionally kept under `paper-copath/data/`, separate from
 the rise-and-fall paper inputs in `paper-rf/data/`.
 
-The A-beta inputs are regional wide tables copied from the same archive:
+The A-beta inputs are copied from the same archive:
 
+- `Ab40_15M_PFF-PHF-Ctrl_MAPTApp KI.csv`
+- `Ab42_15M_PFF-PHF-Ctrl_MAPTApp KI.csv`
 - `ab40_pathology_mpff.csv`
 - `ab42_pathology_mpff.csv`
 - `ab40_pathology_adphf.csv`
@@ -34,10 +36,13 @@ The A-beta inputs are regional wide tables copied from the same archive:
 - `ab40_pathology_control.csv`
 - `ab42_pathology_control.csv`
 
-The source A-beta tables contain APP/MAPTApp KI injected treatments (`mPFF`,
-`AD PHF`) and non-injected controls (`none`). They do not contain a separate
-MAPT amyloid condition, so downstream APP minus MAPT parameter shifts are
-compared against treatment minus control A-beta burden.
+The source A-beta long tables contain APP/MAPTApp KI injected treatments
+(`mPFF`, `AD PHF`) and non-injected controls (`none`). They do not contain a
+separate MAPT amyloid condition, so downstream APP minus MAPT parameter shifts
+are compared against treatment minus control A-beta burden. The analysis uses
+`preLimVal` from the original long tables because it is already log-transformed.
+The processed wide `ab*_pathology_*.csv` files are retained for provenance but
+are not used by the current REGION-RF condition comparison.
 
 The deterministic `LOCAL-RF` initial-condition test uses `u0 = 3.364e-5`,
 the all-region mean pathology at the first striatum timepoint from

@@ -132,14 +132,11 @@ parameter-specific R-hat is at most 1.05 in both conditions.
 
 The same script also relates those APP minus MAPT parameter shifts to regional
 A-beta burden. The available A-beta inputs are APP/MAPTApp KI treatment and
-non-injected control maps, not separate APP and MAPT amyloid maps. For that
-reason, the reported A-beta predictor is treatment minus control:
+non-injected control maps, not separate APP and MAPT amyloid maps. The analysis
+uses the original long A-beta tables and treats `preLimVal` as the
+already-log-transformed value. For that reason, the reported A-beta predictor is
+mean `preLimVal` in treatment minus mean `preLimVal` in control:
 
 - synuclein comparisons use `mPFF - none`
 - tau comparisons use `AD PHF - none`
 - A-beta 40 and A-beta 42 are analyzed separately
-
-A-beta values are log-transformed before regional averaging for these
-correlations: the predictor is `mean(log10(1 + treatment)) -
-mean(log10(1 + control))`. This is especially important for A-beta 40, whose
-raw processed values are extremely skewed.
