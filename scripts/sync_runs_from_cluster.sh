@@ -27,6 +27,7 @@ if [[ "$FULL_SYNC" == "1" ]]; then
 else
   synced=0
   skipped=0
+  echo "Discovering remote run folders that may need syncing..."
   while IFS= read -r remote_dir; do
     rel_dir="${remote_dir#./}"
     local_dir="$LOCAL_RUNS_DIR/$rel_dir"
@@ -43,7 +44,7 @@ else
     synced=$((synced + 1))
   done < <(
     "${SSH_CMD[@]}" "$REMOTE_HOST" \
-      "cd $REMOTE_RUNS_DIR && find . -mindepth 1 -type d | sort"
+      "cd $REMOTE_RUNS_DIR && { find . -mindepth 1 -maxdepth 1 -type d; find . -mindepth 3 -maxdepth 3 -type d -path './*/regional_runs/*'; }"
   )
 
   echo "Run folder sync complete: $synced new folder(s), $skipped already present."

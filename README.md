@@ -338,9 +338,10 @@ scripts/sync_runs_from_cluster.sh
 ```
 
 By default, the script now syncs only run folders that are not already present
-locally. This makes repeated syncs much faster when `runs/` contains many
-finished chain or REGION-RF folders. Cluster logs are also copied with
-`--ignore-existing`.
+locally. It checks top-level run folders and REGION-RF folders under
+`regional_runs/`, but avoids walking every nested plot and diagnostics directory.
+This makes repeated syncs much faster when `runs/` contains many finished chain
+or REGION-RF folders. Cluster logs are also copied with `--ignore-existing`.
 
 To force the old full `rsync` behavior:
 
