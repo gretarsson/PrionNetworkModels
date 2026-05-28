@@ -8,6 +8,7 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 POSTERIOR_JOBNAME="hippocampus_DIFF-RF_RETRO_striatum-global-priors"
 POSTERIOR_CONFIG="paper-rf/configs/hippocampus_diff_rf_striatum_global_priors.toml"
 POSTERIOR_CHAINS="${POSTERIOR_CHAINS:-4}"
+POSTERIOR_CHAIN_START="${POSTERIOR_CHAIN_START:-1}"
 SLURM_PARTITION="${SLURM_PARTITION:-long}"
 SLURM_TIME="${SLURM_TIME:-5-00:00:00}"
 export SLURM_PARTITION SLURM_TIME
@@ -21,8 +22,9 @@ if [[ ! -f "$POSTERIOR_PRIOR_SOURCE" ]]; then
   echo "Posterior-prior hippocampus chains will wait for merge job $MERGE_JOB_ID." >&2
 fi
 
-echo "Submitting $POSTERIOR_CHAINS posterior-prior hippocampus chains on partition '$SLURM_PARTITION' for $SLURM_TIME."
-for CHAIN in $(seq 1 "$POSTERIOR_CHAINS"); do
+POSTERIOR_CHAIN_END=$((POSTERIOR_CHAIN_START + POSTERIOR_CHAINS - 1))
+echo "Submitting posterior-prior hippocampus chains C${POSTERIOR_CHAIN_START}-C${POSTERIOR_CHAIN_END} on partition '$SLURM_PARTITION' for $SLURM_TIME."
+for CHAIN in $(seq "$POSTERIOR_CHAIN_START" "$POSTERIOR_CHAIN_END"); do
   RUN_ID="${POSTERIOR_JOBNAME}_C${CHAIN}"
   echo "Submitting $RUN_ID from $POSTERIOR_CONFIG"
   if [[ -n "$MERGE_DEPENDENCY" ]]; then

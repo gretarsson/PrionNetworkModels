@@ -325,6 +325,17 @@ SLURM_TIME=5-00:00:00 \
 scripts/run_hippocampus_inferences.sh
 ```
 
+To submit additional chains without resubmitting existing ones, set the starting
+chain index. For example, to submit only C5-C8:
+
+```bash
+POSTERIOR_CHAIN_START=5 \
+POSTERIOR_CHAINS=4 \
+SLURM_PARTITION=long \
+SLURM_TIME=5-00:00:00 \
+scripts/run_hippocampus_inferences.sh
+```
+
 That script expects a merged striatum `DIFF-RF` run at:
 
 ```text
