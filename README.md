@@ -337,6 +337,17 @@ To sync all finished run folders and cluster logs back from the cluster to your 
 scripts/sync_runs_from_cluster.sh
 ```
 
+By default, the script now syncs only run folders that are not already present
+locally. This makes repeated syncs much faster when `runs/` contains many
+finished chain or REGION-RF folders. Cluster logs are also copied with
+`--ignore-existing`.
+
+To force the old full `rsync` behavior:
+
+```bash
+FULL_SYNC=1 scripts/sync_runs_from_cluster.sh
+```
+
 By default, that script pulls from:
 
 - `alexanderc@cubic-login1:~/PrionNetworkModels/runs/`
