@@ -96,6 +96,21 @@ python paper-rf/analyses/plotting/plot_biological_figures.py \
   --out-dir paper-rf/figures/biological
 ```
 
+To regenerate the manuscript replacement panels for the gene-coefficient PCA
+using the beta-positive striatum and hippocampus analyses:
+
+```bash
+paper-rf/python/.venv/bin/python paper-rf/analyses/plotting/plot_manuscript_gene_coefficients.py
+```
+
+This writes matched striatum and hippocampus coefficient-cloud panels, a direct
+PC1-direction comparison, and the corresponding PCA statistics under:
+
+```text
+paper-rf/figures/manuscript/gene_coefficients_beta_positive/
+paper-rf/results/manuscript/gene_coefficients_beta_positive/
+```
+
 The end-to-end convenience wrapper runs the parameter export, transcriptomics,
 cell-type analyses, axis comparison, and plotting separately for three region
 filters:

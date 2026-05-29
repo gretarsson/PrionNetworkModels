@@ -92,17 +92,18 @@ def align_expression(params: pd.DataFrame, expression: pd.DataFrame) -> tuple[pd
 
 
 def regress_gene_coefficients(df: pd.DataFrame, gene_cols: list[str]) -> pd.DataFrame:
-    x = np.column_stack([df["z_beta"].to_numpy(), df["z_gamma"].to_numpy()])
-    # No intercept after centering expression; coefficients are comparable to standardized parameter axes.
+    # Match the manuscript analysis: expression_g ~ 1 + z(beta) + z(gamma).
+    # The intercept is fit but not retained because the downstream PCA is on
+    # the beta/gamma coefficient cloud.
+    x = np.column_stack([np.ones(len(df)), df["z_beta"].to_numpy(), df["z_gamma"].to_numpy()])
     rows = []
     for gene in gene_cols:
         y = pd.to_numeric(df[gene], errors="coerce").to_numpy(dtype=float)
         mask = np.isfinite(y) & np.isfinite(x).all(axis=1)
-        if mask.sum() < 5:
+        if mask.sum() < 4:
             continue
-        yz = zscore(y[mask])
-        coef, *_ = np.linalg.lstsq(x[mask], yz, rcond=None)
-        rows.append((gene, coef[0], coef[1], int(mask.sum())))
+        coef, *_ = np.linalg.lstsq(x[mask], y[mask], rcond=None)
+        rows.append((gene, coef[1], coef[2], int(mask.sum())))
     return pd.DataFrame(rows, columns=["gene", "coef_beta", "coef_gamma", "n_used"])
 
 

@@ -497,6 +497,32 @@ function load_observation_summary(path_csv::AbstractString; network_csv::Union{N
     )
 end
 
+function r2_identity(observed::AbstractVector, predicted::AbstractVector)
+    denom = sum(abs2, observed .- mean(observed))
+    denom == 0 && return NaN
+    return 1 - sum(abs2, predicted .- observed) / denom
+end
+
+function r2_origin_fit(observed::AbstractVector, predicted::AbstractVector)
+    denom = sum(abs2, observed)
+    denom == 0 && return (r2 = NaN, slope = NaN)
+    slope = sum(observed .* predicted) / denom
+    residuals = predicted .- slope .* observed
+    return (r2 = 1 - sum(abs2, residuals) / denom, slope = slope)
+end
+
+function predicted_observed_metrics(observed::AbstractVector, predicted::AbstractVector)
+    origin = r2_origin_fit(observed, predicted)
+    return (
+        n = length(observed),
+        r2_origin = origin.r2,
+        slope_origin = origin.slope,
+        r2_identity = r2_identity(observed, predicted),
+        rmse = sqrt(mean((predicted .- observed) .^ 2)),
+        mae = mean(abs.(predicted .- observed)),
+    )
+end
+
 function trajectory_parameter_names(model_name::AbstractString, n_regions::Integer)
     if model_name == "DIFF"
         return ["rho"]
@@ -564,13 +590,14 @@ function predicted_observed_plot(obs, predicted_path::AbstractString, output_pat
     y = y[finite]
     minxy = min(minimum(x), minimum(y))
     maxxy = max(maximum(x), maximum(y))
+    metrics = predicted_observed_metrics(x, y)
 
     plt = scatter(
         x,
         y;
         xlabel = "Observed",
         ylabel = "Predicted",
-        title = "Predicted vs Observed",
+        title = "Predicted vs Observed (R²=$(round(metrics.r2_origin; digits = 3)))",
         legend = false,
         alpha = 0.7,
         markersize = 4,
@@ -580,7 +607,20 @@ function predicted_observed_plot(obs, predicted_path::AbstractString, output_pat
     )
     plot!(plt, [minxy, maxxy], [minxy, maxxy]; color = :black, linestyle = :dash, linewidth = 2)
     savefig(plt, output_path)
-    return output_path
+
+    metrics_path = joinpath(dirname(output_path), "predicted_vs_observed_metrics.csv")
+    CSV.write(
+        metrics_path,
+        DataFrame(
+            n = [metrics.n],
+            r2_origin = [metrics.r2_origin],
+            slope_origin = [metrics.slope_origin],
+            r2_identity = [metrics.r2_identity],
+            rmse = [metrics.rmse],
+            mae = [metrics.mae],
+        ),
+    )
+    return (plot = output_path, metrics = metrics_path)
 end
 
 function retrodiction_plots(obs, output_dir::AbstractString; run_dir::Union{Nothing,String}=nothing)
@@ -775,6 +815,11 @@ function plot_run_bundle(run_dir::AbstractString; output_dir::Union{Nothing,Stri
             obs,
             predictions_train,
             joinpath(outdir, "predicted_vs_observed.pdf"),
+        )
+        predicted_observed_plot(
+            obs,
+            predictions_train,
+            joinpath(outdir, "predicted_vs_observed.png"),
         )
         retrodiction_plots(
             obs,
