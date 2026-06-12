@@ -22,7 +22,7 @@ mean_data = false
 ignore_seed = true
 
 [priors.posterior]
-source = "runs/striatum_LOCAL-RF"
+source = "runs/striatum_DIFF-RF_RETRO_ignore-seed"
 parameters = ["alpha", "sigma"]
 widen = 2.5
 min_sd = 1e-6

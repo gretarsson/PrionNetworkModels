@@ -13,13 +13,16 @@ SLURM_PARTITION="${SLURM_PARTITION:-long}"
 SLURM_TIME="${SLURM_TIME:-5-00:00:00}"
 export SLURM_PARTITION SLURM_TIME
 
-POSTERIOR_PRIOR_SOURCE="$PROJECT_DIR/runs/striatum_LOCAL-RF/posterior.h5"
-MERGE_DEPENDENCY=""
+POSTERIOR_PRIOR_SOURCE="$PROJECT_DIR/runs/striatum_DIFF-RF_RETRO_ignore-seed/posterior.h5"
 if [[ ! -f "$POSTERIOR_PRIOR_SOURCE" ]]; then
-  echo "Merged striatum LOCAL-RF posterior not found; submitting merge job first." >&2
-  MERGE_JOB_ID="$("$PROJECT_DIR/cluster/submit_merge_chains.sh" striatum_LOCAL-RF striatum_LOCAL-RF 4)"
-  MERGE_DEPENDENCY="afterok:$MERGE_JOB_ID"
-  echo "Hippocampus LOCAL-RF chains will wait for merge job $MERGE_JOB_ID." >&2
+  cat >&2 <<EOF
+Missing required posterior-prior source:
+  $POSTERIOR_PRIOR_SOURCE
+
+Merge the existing striatum no-seed DIFF-RF chains first, then rerun this script.
+This script does not submit merge jobs automatically.
+EOF
+  exit 1
 fi
 
 CHAIN_END=$((CHAIN_START + CHAINS - 1))
@@ -27,11 +30,7 @@ echo "Submitting ignore-seed posterior-prior hippocampus LOCAL-RF chains C${CHAI
 for CHAIN in $(seq "$CHAIN_START" "$CHAIN_END"); do
   RUN_ID="${JOBNAME}_C${CHAIN}"
   echo "Submitting $RUN_ID from $CONFIG"
-  if [[ -n "$MERGE_DEPENDENCY" ]]; then
-    SLURM_DEPENDENCY="$MERGE_DEPENDENCY" "$PROJECT_DIR/cluster/submit_inference.sh" "$PROJECT_DIR/$CONFIG" "$RUN_ID"
-  else
-    "$PROJECT_DIR/cluster/submit_inference.sh" "$PROJECT_DIR/$CONFIG" "$RUN_ID"
-  fi
+  "$PROJECT_DIR/cluster/submit_inference.sh" "$PROJECT_DIR/$CONFIG" "$RUN_ID"
 done
 
 echo "All ignore-seed posterior-prior hippocampus LOCAL-RF jobs submitted."
