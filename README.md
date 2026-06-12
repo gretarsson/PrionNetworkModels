@@ -348,6 +348,30 @@ To sync all finished run folders and cluster logs back from the cluster to your 
 scripts/sync_runs_from_cluster.sh
 ```
 
+By default, run syncing is shallow: it syncs files directly inside each top-level
+`runs/<run_id>/` bundle but does not descend into nested subfolders. To sync only
+specific top-level runs, pass the run IDs:
+
+```bash
+scripts/sync_runs_from_cluster.sh \
+  striatum_DIFF-RF_RETRO_ignore-seed_C1 \
+  striatum_DIFF-RF_RETRO_ignore-seed_C2 \
+  striatum_DIFF-RF_RETRO_ignore-seed_C3 \
+  striatum_DIFF-RF_RETRO_ignore-seed_C4
+```
+
+To restore the old full recursive `runs/` sync behavior, opt in explicitly:
+
+```bash
+scripts/sync_runs_from_cluster.sh --recursive-runs
+```
+
+To skip cluster logs and sync only run bundles:
+
+```bash
+scripts/sync_runs_from_cluster.sh --no-logs
+```
+
 By default, that script pulls from:
 
 - `alexanderc@cubic-login1:~/PrionNetworkModels/runs/`
