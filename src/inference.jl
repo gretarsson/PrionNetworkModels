@@ -14,7 +14,7 @@ function default_priors(model_name::AbstractString, N::Integer)
             sigma = LogNormal(0, 1),
             seed = truncated(Normal(0.0, 0.1), 0.0, Inf),
         )
-    elseif name == "DIFF-RF"
+    elseif name == "DIFF-RF" || name == "DIFF-RF-REGIONAL"
         return (
             rho = truncated(Normal(0.0, 0.1), 0.0, Inf),
             alpha = truncated(Normal(0.0, 0.1), 0.0, Inf),
@@ -39,10 +39,10 @@ end
 function resolve_priors(spec::RunSpec, N::Integer)
     priors = default_priors(spec.model.name, N)
     isnothing(spec.posterior_priors.source) && return priors
-    return apply_posterior_priors(priors, spec.posterior_priors)
+    return apply_posterior_priors(priors, spec.posterior_priors, N)
 end
 
-function apply_posterior_priors(base_priors::NamedTuple, posterior_spec::PosteriorPriorSpec)
+function apply_posterior_priors(base_priors::NamedTuple, posterior_spec::PosteriorPriorSpec, N::Integer)
     source = posterior_spec.source
     isnothing(source) && return base_priors
 
@@ -50,13 +50,28 @@ function apply_posterior_priors(base_priors::NamedTuple, posterior_spec::Posteri
     posterior = load_posterior_hdf5(posterior_path)
     parameter_names = posterior.parameter_names
     prior_updates = Dict{Symbol,Any}()
+    regional_updates = Dict{Symbol,Vector{Any}}()
 
     for (idx, name) in enumerate(parameter_names)
         should_update_parameter(name, posterior_spec) || continue
-        key = Symbol(name)
+        parsed = parse_indexed_parameter_name(name)
+        if isnothing(parsed)
+            key = Symbol(name)
+            haskey(base_priors, key) || error("Posterior-prior parameter '$name' is not a base prior for this model")
+            values = posterior.samples[:, idx]
+            prior_updates[key] = posterior_prior_distribution(values, base_priors[key], posterior_spec)
+            continue
+        end
+
+        family, region_idx = parsed
+        key = Symbol(family)
         haskey(base_priors, key) || error("Posterior-prior parameter '$name' is not a base prior for this model")
+        1 <= region_idx <= N || error("Posterior-prior parameter '$name' is outside expected 1:$N regional index range")
         values = posterior.samples[:, idx]
-        prior_updates[key] = posterior_prior_distribution(values, base_priors[key], posterior_spec)
+        priors_for_family = get!(regional_updates, key) do
+            [prior_at_index(base_priors[key], i) for i in 1:N]
+        end
+        priors_for_family[region_idx] = posterior_prior_distribution(values, prior_at_index(base_priors[key], region_idx), posterior_spec)
     end
 
     requested = Set(posterior_spec.parameters)
@@ -64,7 +79,32 @@ function apply_posterior_priors(base_priors::NamedTuple, posterior_spec::Posteri
     missing = setdiff(requested, found)
     isempty(missing) || error("Posterior source is missing requested parameter(s): $(join(sort(collect(missing)), ", "))")
 
+    for (key, priors_for_family) in regional_updates
+        prior_updates[key] = priors_for_family
+    end
+
     return merge(base_priors, (; prior_updates...))
+end
+
+function parse_indexed_parameter_name(name::AbstractString)
+    m = match(r"^([A-Za-z_][A-Za-z0-9_]*)\[(\d+)\]$", name)
+    isnothing(m) && return nothing
+    return (m.captures[1], parse(Int, m.captures[2]))
+end
+
+function prior_at_index(prior, idx::Integer)
+    prior isa AbstractVector || return prior
+    1 <= idx <= length(prior) || error("Prior index $idx is outside prior vector length $(length(prior))")
+    return prior[idx]
+end
+
+function vector_prior_distribution(prior, N::Integer)
+    if prior isa AbstractVector
+        length(prior) == N || error("Expected $N regional priors, got $(length(prior))")
+        dists = collect(prior)
+        return arraydist(convert(Vector{typeof(first(dists))}, dists))
+    end
+    return filldist(prior, N)
 end
 
 function posterior_source_path(source::AbstractString)
@@ -153,6 +193,8 @@ function parameter_names_for_model(model_name::AbstractString, N::Integer; seed_
         return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:N], ["sigma"], seed_names)
     elseif name == "DIFF-RF"
         return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:N], ["gamma[$i]" for i in 1:N], ["sigma"], seed_names)
+    elseif name == "DIFF-RF-REGIONAL"
+        return vcat(["rho"], ["alpha[$i]" for i in 1:N], ["beta[$i]" for i in 1:N], ["gamma[$i]" for i in 1:N], ["sigma"], seed_names)
     elseif name == "LOCAL-RF"
         names = vcat(["alpha"], ["beta[$i]" for i in 1:N], ["gamma[$i]" for i in 1:N])
         if infer_local_u0
@@ -193,8 +235,8 @@ end
     elseif spec.model.name == "DIFF-RF"
         rho ~ priors.rho
         alpha ~ priors.alpha
-        beta ~ filldist(priors.beta, N)
-        gamma ~ filldist(priors.gamma, N)
+        beta ~ vector_prior_distribution(priors.beta, N)
+        gamma ~ vector_prior_distribution(priors.gamma, N)
         sigma ~ priors.sigma
         if length(spec.seeding.seed_indices) == 1
             seed ~ priors.seed
@@ -204,10 +246,24 @@ end
             seed_value = seed_values
         end
         params = vcat([rho, alpha], beta, gamma)
+    elseif spec.model.name == "DIFF-RF-REGIONAL"
+        rho ~ priors.rho
+        alpha ~ vector_prior_distribution(priors.alpha, N)
+        beta ~ vector_prior_distribution(priors.beta, N)
+        gamma ~ vector_prior_distribution(priors.gamma, N)
+        sigma ~ priors.sigma
+        if length(spec.seeding.seed_indices) == 1
+            seed ~ priors.seed
+            seed_value = seed
+        else
+            seed_values ~ filldist(priors.seed, length(spec.seeding.seed_indices))
+            seed_value = seed_values
+        end
+        params = vcat([rho], alpha, beta, gamma)
     elseif spec.model.name == "LOCAL-RF"
         alpha ~ priors.alpha
-        beta ~ filldist(priors.beta, N)
-        gamma ~ filldist(priors.gamma, N)
+        beta ~ vector_prior_distribution(priors.beta, N)
+        gamma ~ vector_prior_distribution(priors.gamma, N)
         if spec.seeding.infer_local_u0
             u0 ~ filldist(priors.u0, N)
             local_u0 = u0
@@ -269,6 +325,11 @@ function posterior_mean_parameter_vector(chain::Chains, model_name::AbstractStri
         beta = [mean(vec(Array(chain[Symbol("beta[$i]")]))) for i in 1:N]
         gamma = [mean(vec(Array(chain[Symbol("gamma[$i]")]))) for i in 1:N]
         return vcat([mean(vec(Array(chain[:rho]))), mean(vec(Array(chain[:alpha])))], beta, gamma)
+    elseif name == "DIFF-RF-REGIONAL"
+        alpha = [mean(vec(Array(chain[Symbol("alpha[$i]")]))) for i in 1:N]
+        beta = [mean(vec(Array(chain[Symbol("beta[$i]")]))) for i in 1:N]
+        gamma = [mean(vec(Array(chain[Symbol("gamma[$i]")]))) for i in 1:N]
+        return vcat([mean(vec(Array(chain[:rho])))], alpha, beta, gamma)
     elseif name == "LOCAL-RF"
         beta = [mean(vec(Array(chain[Symbol("beta[$i]")]))) for i in 1:N]
         gamma = [mean(vec(Array(chain[Symbol("gamma[$i]")]))) for i in 1:N]

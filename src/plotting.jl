@@ -63,7 +63,7 @@ function chains_long_df(chain::Chains)
     return DataFrame(iteration = iterations, chain = chain_ids, parameter = parameter_names, value = values)
 end
 
-is_local_param(name::String) = startswith(name, "beta[") || startswith(name, "gamma[") || startswith(name, "u0[")
+is_local_param(name::String) = startswith(name, "alpha[") || startswith(name, "beta[") || startswith(name, "gamma[") || startswith(name, "u0[")
 
 function seed_parameter_indices(parameter_names::Vector{String})
     name_to_idx = Dict(name => idx for (idx, name) in enumerate(parameter_names))
@@ -92,11 +92,14 @@ function initial_condition_for_draw(spec::RunSpec, pathology, n_regions::Integer
 end
 
 function split_local_params(rhats::Dict{String,Float64})
+    alpha = Dict{String,Float64}()
     beta = Dict{String,Float64}()
     gamma = Dict{String,Float64}()
     u0 = Dict{String,Float64}()
     for (name, val) in rhats
-        if startswith(name, "beta[")
+        if startswith(name, "alpha[")
+            alpha[name] = val
+        elseif startswith(name, "beta[")
             beta[name] = val
         elseif startswith(name, "gamma[")
             gamma[name] = val
@@ -104,7 +107,7 @@ function split_local_params(rhats::Dict{String,Float64})
             u0[name] = val
         end
     end
-    return beta, gamma, u0
+    return alpha, beta, gamma, u0
 end
 
 function compute_rhat_semantic(chain::Chains)
@@ -132,6 +135,8 @@ function top_problem_parameters(summary::DataFrame; top_k_local::Int=12)
     summary.family = map(summary.parameter) do name
         if startswith(name, "beta[")
             "beta"
+        elseif startswith(name, "alpha[")
+            "alpha"
         elseif startswith(name, "gamma[")
             "gamma"
         elseif startswith(name, "u0[")
@@ -437,9 +442,10 @@ function diagnostics_plots(run_dir::AbstractString, output_dir::AbstractString)
     rhats = compute_rhat_semantic(chain)
 
     global_rhats = Dict(name => val for (name, val) in rhats if !is_local_param(name))
-    beta_rhats, gamma_rhats, u0_rhats = split_local_params(rhats)
+    alpha_rhats, beta_rhats, gamma_rhats, u0_rhats = split_local_params(rhats)
 
     plot_rhat_scatter(joinpath(output_dir, "global_rhat.pdf"), global_rhats; title = "Global Parameters")
+    isempty(alpha_rhats) || plot_rhat_scatter(joinpath(output_dir, "alpha_rhat.pdf"), alpha_rhats; title = "Alpha Parameters")
     isempty(beta_rhats) || plot_rhat_scatter(joinpath(output_dir, "beta_rhat.pdf"), beta_rhats; title = "Beta Parameters")
     isempty(gamma_rhats) || plot_rhat_scatter(joinpath(output_dir, "gamma_rhat.pdf"), gamma_rhats; title = "Gamma Parameters")
     isempty(u0_rhats) || plot_rhat_scatter(joinpath(output_dir, "u0_rhat.pdf"), u0_rhats; title = "Initial Conditions")
@@ -449,6 +455,9 @@ function diagnostics_plots(run_dir::AbstractString, output_dir::AbstractString)
     values = Float64[]
     for (name, val) in sort(collect(global_rhats); by = first)
         push!(names, name); push!(families, "global"); push!(values, val)
+    end
+    for (name, val) in sort(collect(alpha_rhats); by = first)
+        push!(names, name); push!(families, "alpha"); push!(values, val)
     end
     for (name, val) in sort(collect(beta_rhats); by = first)
         push!(names, name); push!(families, "beta"); push!(values, val)
@@ -530,6 +539,8 @@ function trajectory_parameter_names(model_name::AbstractString, n_regions::Integ
         return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:n_regions])
     elseif model_name == "DIFF-RF"
         return vcat(["rho", "alpha"], ["beta[$i]" for i in 1:n_regions], ["gamma[$i]" for i in 1:n_regions])
+    elseif model_name == "DIFF-RF-REGIONAL"
+        return vcat(["rho"], ["alpha[$i]" for i in 1:n_regions], ["beta[$i]" for i in 1:n_regions], ["gamma[$i]" for i in 1:n_regions])
     elseif model_name == "LOCAL-RF"
         return vcat(["alpha"], ["beta[$i]" for i in 1:n_regions], ["gamma[$i]" for i in 1:n_regions])
     else

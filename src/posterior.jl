@@ -22,6 +22,11 @@ function posterior_mean_parameter_vector(samples::AbstractMatrix, parameter_name
         beta = [mean(samples[:, name_to_idx["beta[$i]"]]) for i in 1:N]
         gamma = [mean(samples[:, name_to_idx["gamma[$i]"]]) for i in 1:N]
         return vcat([mean(samples[:, name_to_idx["rho"]]), mean(samples[:, name_to_idx["alpha"]])], beta, gamma)
+    elseif model_name == "DIFF-RF-REGIONAL"
+        alpha = [mean(samples[:, name_to_idx["alpha[$i]"]]) for i in 1:N]
+        beta = [mean(samples[:, name_to_idx["beta[$i]"]]) for i in 1:N]
+        gamma = [mean(samples[:, name_to_idx["gamma[$i]"]]) for i in 1:N]
+        return vcat([mean(samples[:, name_to_idx["rho"]])], alpha, beta, gamma)
     elseif model_name == "LOCAL-RF"
         beta = [mean(samples[:, name_to_idx["beta[$i]"]]) for i in 1:N]
         gamma = [mean(samples[:, name_to_idx["gamma[$i]"]]) for i in 1:N]

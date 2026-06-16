@@ -8,6 +8,8 @@ function parameter_count(model_name::AbstractString, N::Integer; parameter_shari
         return 2 + groups
     elseif name == "DIFF-RF"
         return 2 + 2 * groups
+    elseif name == "DIFF-RF-REGIONAL"
+        return 1 + 3 * groups
     elseif name == "LOCAL-RF"
         return 1 + 3 * groups
     else
