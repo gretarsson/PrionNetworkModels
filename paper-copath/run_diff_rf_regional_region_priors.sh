@@ -5,10 +5,21 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 "$PROJECT_DIR/cluster/prepare_julia_env.sh"
 
+if command -v module >/dev/null 2>&1; then
+  module purge
+  module load julia
+fi
+
+if ! command -v julia >/dev/null 2>&1; then
+  echo "Could not find julia on PATH after loading the cluster Julia module." >&2
+  exit 1
+fi
+
 CHAINS="${DIFF_RF_REGIONAL_CHAINS:-4}"
 SLURM_PARTITION="${SLURM_PARTITION:-all}"
 SLURM_TIME="${SLURM_TIME:-2-00:00:00}"
 export SLURM_PARTITION SLURM_TIME
+export JULIA_DEPOT_PATH="${JULIA_DEPOT_PATH:-$PROJECT_DIR/.julia_depot}"
 
 DATASETS=(
   "syn_app:paper-copath/configs/copath_syn_app_diff_rf_regional_region_priors.toml"
