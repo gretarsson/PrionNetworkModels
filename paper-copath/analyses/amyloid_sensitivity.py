@@ -14,11 +14,12 @@ from scipy import stats
 from sklearn.decomposition import PCA
 
 
-PARAMETERS = ["alpha", "beta", "gamma"]
+PARAMETERS = ["r", "beta", "gamma"]
 AMYLOIDS = ["ab40", "ab42"]
 MA_CELLTYPES = ["frac_Dopa", "frac_Nora", "frac_Sero", "frac_Hist"]
 PROTEIN_LABEL = {"syn": "Synuclein", "tau": "Tau"}
 PROTEIN_COLOR = {"syn": "#0047AB", "tau": "#C43616"}
+PARAMETER_LABEL = {"r": r"$r=\alpha\beta$", "beta": "beta", "gamma": "gamma"}
 
 
 def strip_hemi(region: str) -> str:
@@ -167,11 +168,9 @@ def load_comparison_tables(result_dir: Path) -> dict[str, pd.DataFrame]:
         df = pd.read_csv(result_dir / f"{protein}_app_vs_mapt_region_parameters.csv")
         df["protein"] = protein
         df["region_base"] = df["region"].map(strip_hemi)
-        rhat_mask = df["active_any"].astype(bool).to_numpy()
-        for parameter in PARAMETERS:
-            rhat_mask &= pd.to_numeric(df[f"{parameter}_rhat_app"], errors="coerce").to_numpy() <= 1.05
-            rhat_mask &= pd.to_numeric(df[f"{parameter}_rhat_mapt"], errors="coerce").to_numpy() <= 1.05
-        df["active_rhat"] = rhat_mask
+        df["active_rhat"] = df["active_any"].astype(bool).to_numpy()
+        df["r_app"] = pd.to_numeric(df["alpha_app"], errors="coerce") * pd.to_numeric(df["beta_app"], errors="coerce")
+        df["r_mapt"] = pd.to_numeric(df["alpha_mapt"], errors="coerce") * pd.to_numeric(df["beta_mapt"], errors="coerce")
         for parameter in PARAMETERS:
             diff_col = f"{parameter}_diff_app_minus_mapt"
             if diff_col not in df.columns:
@@ -243,7 +242,7 @@ def plot_amyloid_parameter_grid(tables: dict[str, pd.DataFrame], figure_dir: Pat
                     ax.plot(xx, intercept + slope * xx, color="black", lw=1.8)
                     ax.text(0.04, 0.96, f"r={r:.2f}, p={p:.2g}\nn={finite.sum()}", transform=ax.transAxes, ha="left", va="top", fontsize=9)
                 ax.axhline(0, color="0.75", lw=0.8)
-                ax.set_title(f"{PROTEIN_LABEL[protein]}: delta {parameter}")
+                ax.set_title(f"{PROTEIN_LABEL[protein]}: delta {PARAMETER_LABEL[parameter]}")
                 ax.set_xlabel(f"{amyloid.upper()} amyloid load")
                 ax.set_ylabel("APP - MAPT")
                 style_axis(ax)
@@ -259,7 +258,7 @@ def plot_delta_pca(tables: dict[str, pd.DataFrame], pca_summary: pd.DataFrame, f
         summary = pca_summary[(pca_summary["protein"] == protein) & (pca_summary["component"] == "PC1")].iloc[0]
         ax = axes[row_idx, 0]
         loads = [summary[f"loading_delta_{p}"] for p in PARAMETERS]
-        ax.bar(PARAMETERS, loads, color=PROTEIN_COLOR[protein], alpha=0.86)
+        ax.bar([PARAMETER_LABEL[p] for p in PARAMETERS], loads, color=PROTEIN_COLOR[protein], alpha=0.86)
         ax.axhline(0, color="0.35", lw=0.8)
         ax.set_ylim(-1, 1)
         ax.set_title(f"{PROTEIN_LABEL[protein]} delta-PC1 loadings")
@@ -328,7 +327,7 @@ def plot_syn_tau_comparison(tables: dict[str, pd.DataFrame], figure_dir: Path) -
             rows.append({"comparison": parameter, "n_regions": int(finite.sum()), "pearson_r": r, "pearson_p": p})
         ax.axhline(0, color="0.78", lw=0.8)
         ax.axvline(0, color="0.78", lw=0.8)
-        ax.set_title(parameter)
+        ax.set_title(PARAMETER_LABEL.get(parameter, parameter))
         ax.set_xlabel("Syn APP - MAPT")
         ax.set_ylabel("Tau APP - MAPT")
         style_axis(ax)
@@ -507,7 +506,12 @@ def celltype_axis_analysis(
 def plot_celltype_heatmap(corr: pd.DataFrame, figure_dir: Path) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.8), sharey=True)
     outcomes = ["delta_pc1"] + [f"{p}_diff_app_minus_mapt" for p in PARAMETERS]
-    clean = {"delta_pc1": "delta-PC1", "alpha_diff_app_minus_mapt": "delta alpha", "beta_diff_app_minus_mapt": "delta beta", "gamma_diff_app_minus_mapt": "delta gamma"}
+    clean = {
+        "delta_pc1": "delta-PC1",
+        "r_diff_app_minus_mapt": "delta r",
+        "beta_diff_app_minus_mapt": "delta beta",
+        "gamma_diff_app_minus_mapt": "delta gamma",
+    }
     for ax, protein in zip(axes, ["syn", "tau"]):
         sub = corr[corr["protein"] == protein]
         mat = sub.pivot(index="cell_type", columns="outcome", values="spearman_r").reindex(columns=outcomes)
@@ -542,10 +546,10 @@ def plot_celltype_bars(corr: pd.DataFrame, figure_dir: Path) -> None:
 
 
 def plot_monoaminergic_scores(mono: pd.DataFrame, joint: pd.DataFrame, figure_dir: Path) -> None:
-    outcomes = ["delta_pc1", "alpha_diff_app_minus_mapt", "beta_diff_app_minus_mapt", "gamma_diff_app_minus_mapt"]
+    outcomes = ["delta_pc1", "r_diff_app_minus_mapt", "beta_diff_app_minus_mapt", "gamma_diff_app_minus_mapt"]
     clean = {
         "delta_pc1": "delta-PC1",
-        "alpha_diff_app_minus_mapt": "delta alpha",
+        "r_diff_app_minus_mapt": "delta r",
         "beta_diff_app_minus_mapt": "delta beta",
         "gamma_diff_app_minus_mapt": "delta gamma",
     }

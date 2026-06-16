@@ -16,13 +16,15 @@ function get_arg(flag::String, default::Union{Nothing,String}=nothing)
 end
 
 function ensure_summary(root::AbstractString)
-    path = joinpath(root, "region_rf_summary.csv")
+    path = root
+    isdir(root) && (path = joinpath(root, "region_rf_summary.csv"))
     isfile(path) || error("Missing REGION-RF summary: $path. Run paper-copath/plot_region_rf_copath.sh first.")
     return CSV.read(path, DataFrame)
 end
 
 function ensure_posterior_summary(root::AbstractString)
-    path = joinpath(root, "region_rf_posterior_summary_long.csv")
+    path = root
+    isdir(root) && (path = joinpath(root, "region_rf_posterior_summary_long.csv"))
     isfile(path) || error("Missing REGION-RF posterior summary: $path. Run paper-copath/plot_region_rf_copath.sh first.")
     return CSV.read(path, DataFrame)
 end
@@ -56,15 +58,29 @@ function parameter_rhats(root::AbstractString, suffix::AbstractString)
     return wide
 end
 
-function comparison_table(project_root::AbstractString, protein::AbstractString)
-    app_root = joinpath(project_root, "runs", "region_rf", "copath_$(protein)_app")
-    mapt_root = joinpath(project_root, "runs", "region_rf", "copath_$(protein)_mapt")
+function dataset_paths(project_root::AbstractString, dataset::AbstractString, adjusted_dir::Union{Nothing,String})
+    if isnothing(adjusted_dir)
+        root = joinpath(project_root, "runs", "region_rf", "copath_$(dataset)")
+        return (
+            summary = joinpath(root, "region_rf_summary.csv"),
+            posterior = joinpath(root, "region_rf_posterior_summary_long.csv"),
+        )
+    end
+    return (
+        summary = joinpath(adjusted_dir, "$(dataset)_region_rf_summary.csv"),
+        posterior = joinpath(adjusted_dir, "$(dataset)_region_rf_posterior_summary_long.csv"),
+    )
+end
+
+function comparison_table(project_root::AbstractString, protein::AbstractString; adjusted_dir::Union{Nothing,String}=nothing)
+    app_paths = dataset_paths(project_root, "$(protein)_app", adjusted_dir)
+    mapt_paths = dataset_paths(project_root, "$(protein)_mapt", adjusted_dir)
     network = joinpath(project_root, "paper-copath", "data", "network.csv")
     app_obs = joinpath(project_root, "paper-copath", "data", "$(protein)_pathology_app.csv")
     mapt_obs = joinpath(project_root, "paper-copath", "data", "$(protein)_pathology_mapt.csv")
 
-    app = ensure_summary(app_root)
-    mapt = ensure_summary(mapt_root)
+    app = ensure_summary(app_paths.summary)
+    mapt = ensure_summary(mapt_paths.summary)
     app = app[:, [:region_index, :region, :rank, :alpha, :beta, :gamma, :u0, :sigma]]
     mapt = mapt[:, [:region_index, :region, :rank, :alpha, :beta, :gamma, :u0, :sigma]]
     rename!(app, Dict(name => Symbol("$(name)_app") for name in names(app) if !(name in ["region_index", "region"])))
@@ -85,8 +101,8 @@ function comparison_table(project_root::AbstractString, protein::AbstractString)
     end
     df.condition_pair_rank = condition_rank
 
-    df = leftjoin(df, parameter_rhats(app_root, "app"), on = :region_index)
-    df = leftjoin(df, parameter_rhats(mapt_root, "mapt"), on = :region_index)
+    df = leftjoin(df, parameter_rhats(app_paths.posterior, "app"), on = :region_index)
+    df = leftjoin(df, parameter_rhats(mapt_paths.posterior, "mapt"), on = :region_index)
 
     for param in ["alpha", "beta", "gamma"]
         app_col = Symbol("$(param)_app")
@@ -465,13 +481,14 @@ function main()
     project_root = abspath(get_arg("--project-root", dirname(dirname(@__DIR__))))
     out_dir = get_arg("--out-dir", joinpath(project_root, "paper-copath", "results", "region_rf_condition_comparison"))
     figure_dir = get_arg("--figure-dir", joinpath(project_root, "paper-copath", "figures", "region_rf_condition_comparison"))
+    adjusted_dir = get_arg("--adjusted-region-rf-dir", nothing)
     mkpath(out_dir)
     mkpath(figure_dir)
 
     summaries = DataFrame()
     amyloid_summaries = DataFrame()
     for protein in ["syn", "tau"]
-        df = comparison_table(project_root, protein)
+        df = comparison_table(project_root, protein; adjusted_dir = adjusted_dir)
         add_amyloid_columns!(df, project_root, protein)
         CSV.write(joinpath(out_dir, "$(protein)_app_vs_mapt_region_parameters.csv"), df)
         stats = summary_stats(df, protein)

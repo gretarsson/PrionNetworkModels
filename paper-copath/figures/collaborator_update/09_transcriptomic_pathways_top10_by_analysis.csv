@@ -1,0 +1,61 @@
+protein,parameter,Term,NES,FDR q-val
+syn,r,Proteasome,-2.2917821463013532,0.001
+syn,r,Morphine addiction,1.9387517080921808,0.0097844852812079
+syn,r,Synaptic vesicle cycle,1.950374350883333,0.0114804627299506
+syn,r,Steroid biosynthesis,1.9735357929159445,0.0164379352724293
+syn,r,Glutamatergic synapse,2.02544262202072,0.0203517293849125
+syn,r,Circadian entrainment,1.7742049288868462,0.0491572540527886
+syn,r,Cushing syndrome,1.643204892794309,0.0668476034412126
+syn,r,Mannose type O-glycan biosynthesis,1.6298933237371112,0.0670326191628936
+syn,r,Cocaine addiction,1.6549533897460746,0.0685348835697053
+syn,r,Nicotine addiction,1.6650229971460204,0.0720138116696904
+syn,beta,Proteasome,-2.0518101749595825,0.0029856914532473
+syn,beta,Synaptic vesicle cycle,2.0943232638354545,0.0145339991766453
+syn,beta,Citrate cycle (TCA cycle),1.9655701489236184,0.0214549511655241
+syn,beta,Morphine addiction,1.798559935195881,0.0265303159573685
+syn,beta,Glutamatergic synapse,1.8294098773146832,0.0275849372128167
+syn,beta,Steroid biosynthesis,1.9759675253407272,0.0290679983532907
+syn,beta,Endocrine and other factor-regulated calcium reabsorption,1.8003364669644375,0.0293275340528736
+syn,beta,Other glycan degradation,1.85566279766278,0.0298985125919561
+syn,beta,Gap junction,1.7641034727309706,0.0300117645335923
+syn,beta,Arrhythmogenic right ventricular cardiomyopathy (ARVC),1.8294358474858696,0.0321824267482861
+syn,gamma,Oxidative phosphorylation,-4.0408458354619485,0.001
+syn,gamma,Parkinson disease,-3.635132095181584,0.001
+syn,gamma,Huntington disease,-3.343671280946079,0.001
+syn,gamma,Alzheimer disease,-3.279814037353358,0.001
+syn,gamma,Ribosome,-3.2438962412379295,0.001
+syn,gamma,Ubiquitin mediated proteolysis,-3.207542968610878,0.001
+syn,gamma,Protein processing in endoplasmic reticulum,-3.1580138406557356,0.001
+syn,gamma,Thermogenesis,-2.992031567530619,0.001
+syn,gamma,Retrograde endocannabinoid signaling,-2.956146510430727,0.001
+syn,gamma,Citrate cycle (TCA cycle),-2.955100828604511,0.001
+tau,r,Proteasome,-2.5681465879746685,0.001
+tau,r,Oxidative phosphorylation,-2.48994153876441,0.001
+tau,r,Parkinson disease,-2.4845196511394803,0.001
+tau,r,Alzheimer disease,-2.335493858231716,0.001
+tau,r,Non-alcoholic fatty liver disease (NAFLD),-2.232390965730102,0.001
+tau,r,Huntington disease,-2.2053612192955017,0.001
+tau,r,Ribosome,-2.171498689398355,0.001
+tau,r,Citrate cycle (TCA cycle),-1.9749115451255912,0.0021604441275026
+tau,r,Thermogenesis,-1.9592233071447205,0.0026062500585745
+tau,r,Vasopressin-regulated water reabsorption,-1.8494374695290947,0.0111108555128706
+tau,beta,Ribosome,2.182208747384086,0.001
+tau,beta,Proteasome,1.9678253523974736,0.001
+tau,beta,Mitophagy,-2.0202966878421753,0.0268997015140072
+tau,beta,Non-homologous end-joining,1.7287688254725566,0.0638478391209421
+tau,beta,Other glycan degradation,-1.7587489635254665,0.0767432660840795
+tau,beta,Synaptic vesicle cycle,-1.543529227529107,0.0999131770520269
+tau,beta,Proximal tubule bicarbonate reclamation,-1.505638831169699,0.1137303556658395
+tau,beta,Lysosome,-1.546392963865507,0.1155104829719135
+tau,beta,Autophagy,-1.5596071977094983,0.1269032977307872
+tau,beta,Nicotine addiction,-1.590419631660993,0.1273779983457403
+tau,gamma,Synaptic vesicle cycle,2.901833121663856,0.001
+tau,gamma,Mitophagy,2.8280893971292422,0.001
+tau,gamma,Oxidative phosphorylation,2.783256454062163,0.001
+tau,gamma,Parkinson disease,2.3760562129214033,0.001
+tau,gamma,Retrograde endocannabinoid signaling,2.255950792214282,0.0020237752457735
+tau,gamma,Lysosome,2.2522036560238736,0.0021080992143474
+tau,gamma,Alzheimer disease,2.223728899869688,0.0028911074939621
+tau,gamma,Circadian rhythm,2.186953002609091,0.0031621488215211
+tau,gamma,Protein processing in endoplasmic reticulum,2.166708373105567,0.0036540386382021
+tau,gamma,Glutamatergic synapse,2.130579884391545,0.0039095658156988
