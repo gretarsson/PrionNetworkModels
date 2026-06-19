@@ -650,7 +650,7 @@ function predicted_observed_plot(obs, predicted_path::AbstractString, output_pat
         plt,
         lim_min + 0.06span,
         lim_max - 0.12span,
-        text("R² = $(round(metrics.r2_origin; digits = 2))", 20, :left, :black),
+        text("R² = $(round(metrics.r2_identity; digits = 2))", 20, :left, :black),
     )
     savefig(plt, output_path)
 
