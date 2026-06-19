@@ -592,10 +592,17 @@ function posterior_mean_retrodiction(run_dir::AbstractString, obs; n_dense::Int=
     )
 end
 
-function predicted_observed_plot(obs, predicted_path::AbstractString, output_path::AbstractString)
+function predicted_observed_plot(obs, predicted_path::AbstractString, output_path::AbstractString; ignore_regions::Vector{Int}=Int[])
     pred = load_run_matrix(predicted_path)
-    x = vec(obs.mean)
-    y = vec(pred.values)
+    keep_regions = trues(size(obs.mean, 1))
+    valid_ignore_regions = [region_idx for region_idx in ignore_regions if 1 <= region_idx <= length(keep_regions)]
+    for region_idx in valid_ignore_regions
+        if 1 <= region_idx <= length(keep_regions)
+            keep_regions[region_idx] = false
+        end
+    end
+    x = vec(obs.mean[keep_regions, :])
+    y = vec(pred.values[keep_regions, :])
     finite = isfinite.(x) .& isfinite.(y)
     x = x[finite]
     y = y[finite]
@@ -657,6 +664,8 @@ function predicted_observed_plot(obs, predicted_path::AbstractString, output_pat
             r2_identity = [metrics.r2_identity],
             rmse = [metrics.rmse],
             mae = [metrics.mae],
+            ignored_region_indices = [join(valid_ignore_regions, ";")],
+            ignored_regions = [join(obs.labels[valid_ignore_regions], ";")],
         ),
     )
     return (plot = output_path, metrics = metrics_path)
@@ -879,11 +888,13 @@ function plot_run_bundle(run_dir::AbstractString; output_dir::Union{Nothing,Stri
             obs,
             predictions_train,
             joinpath(outdir, "predicted_vs_observed.pdf"),
+            ignore_regions = spec.inference.ignore_seed ? spec.seeding.seed_indices : Int[],
         )
         predicted_observed_plot(
             obs,
             predictions_train,
             joinpath(outdir, "predicted_vs_observed.png"),
+            ignore_regions = spec.inference.ignore_seed ? spec.seeding.seed_indices : Int[],
         )
         retrodiction_plots(
             obs,

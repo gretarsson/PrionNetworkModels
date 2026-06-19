@@ -162,7 +162,7 @@ function write_spec(path::AbstractString, item, inf, n_samples::Integer, n_chain
             "n_samples" => n_samples,
             "n_warmup" => 1000,
             "mean_data" => false,
-            "ignore_seed" => false,
+            "ignore_seed" => true,
             "n_chains" => n_chains,
             "target_acceptance" => 0.65,
             "sampler" => "NUTS",
