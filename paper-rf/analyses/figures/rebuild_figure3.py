@@ -16,9 +16,9 @@ from panel_export import ROOT, Crop, export_crops, write_missing_requirements
 
 
 DEPENDENCIES = [
-    {"run": "runs/striatum_DIFF_RETRO_paper", "status": "available"},
-    {"run": "runs/striatum_DIFF-R_RETRO_paper", "status": "available"},
-    {"run": "runs/striatum_DIFF-RF_RETRO_paper", "status": "available"},
+    {"run": "runs/striatum_DIFF_RETRO", "status": "available"},
+    {"run": "runs/striatum_DIFF-R_RETRO", "status": "available"},
+    {"run": "runs/striatum_DIFF-RF_RETRO", "status": "available"},
 ]
 
 
@@ -34,9 +34,9 @@ def main() -> None:
         plot_model_waic(waic_table, out_dir / "A_model_waic")
 
     runs = {
-        "DIFF": ROOT / "runs" / "striatum_DIFF_RETRO_paper",
-        "DIFF-R": ROOT / "runs" / "striatum_DIFF-R_RETRO_paper",
-        "DIFF-RF": ROOT / "runs" / "striatum_DIFF-RF_RETRO_paper",
+        "DIFF": ROOT / "runs" / "striatum_DIFF_RETRO",
+        "DIFF-R": ROOT / "runs" / "striatum_DIFF-R_RETRO",
+        "DIFF-RF": ROOT / "runs" / "striatum_DIFF-RF_RETRO",
     }
     plot_timepoint_agreement(runs, out_dir / "D_timepoint_agreement")
     regenerated = []

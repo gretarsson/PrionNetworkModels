@@ -53,19 +53,19 @@ function export_transport_waic()
         [
             (panel = "DIFF", model = "euclidean", run_id = "striatum_DIFF_EUCL"),
             (panel = "DIFF", model = "anterograde", run_id = "striatum_DIFF_ANTERO"),
-            (panel = "DIFF", model = "retrograde", run_id = "striatum_DIFF_RETRO_paper"),
+            (panel = "DIFF", model = "retrograde", run_id = "striatum_DIFF_RETRO"),
             (panel = "DIFF", model = "bidirectional", run_id = "striatum_DIFF_BIDIR"),
         ],
         [
             (panel = "DIFF-R", model = "euclidean", run_id = "striatum_DIFF-R_EUCL"),
             (panel = "DIFF-R", model = "anterograde", run_id = "striatum_DIFF-R_ANTERO"),
-            (panel = "DIFF-R", model = "retrograde", run_id = "striatum_DIFF-R_RETRO_paper"),
+            (panel = "DIFF-R", model = "retrograde", run_id = "striatum_DIFF-R_RETRO"),
             (panel = "DIFF-R", model = "bidirectional", run_id = "striatum_DIFF-R_BIDIR"),
         ],
         [
             (panel = "DIFF-RF", model = "euclidean", run_id = "striatum_DIFF-RF_EUCL"),
             (panel = "DIFF-RF", model = "anterograde", run_id = "striatum_DIFF-RF_ANTERO"),
-            (panel = "DIFF-RF", model = "retrograde", run_id = "striatum_DIFF-RF_RETRO_paper"),
+            (panel = "DIFF-RF", model = "retrograde", run_id = "striatum_DIFF-RF_RETRO"),
             (panel = "DIFF-RF", model = "bidirectional", run_id = "striatum_DIFF-RF_BIDIR"),
         ],
     ]
@@ -74,9 +74,9 @@ end
 
 function export_model_class_waic()
     specs = [
-        (panel = "striatum", model = "DIFF", run_id = "striatum_DIFF_RETRO_paper"),
-        (panel = "striatum", model = "DIFF-R", run_id = "striatum_DIFF-R_RETRO_paper"),
-        (panel = "striatum", model = "DIFF-RF", run_id = "striatum_DIFF-RF_RETRO_paper"),
+        (panel = "striatum", model = "DIFF", run_id = "striatum_DIFF_RETRO"),
+        (panel = "striatum", model = "DIFF-R", run_id = "striatum_DIFF-R_RETRO"),
+        (panel = "striatum", model = "DIFF-RF", run_id = "striatum_DIFF-RF_RETRO"),
     ]
     CSV.write(joinpath(OUT_DIR, "figure3_model_waic.csv"), paired_delta_waic(specs))
 end
@@ -84,7 +84,7 @@ end
 function export_null_waic()
     connectivity = CSV.read(joinpath(RUN_ROOT, "striatum_DIFF-RF_RETRO_connectivity_nulls", "waic_values.csv"), DataFrame)
     seeding = CSV.read(joinpath(RUN_ROOT, "striatum_DIFF-RF_RETRO_seed_nulls", "waic_values.csv"), DataFrame)
-    empirical = load_run_waic("striatum_DIFF-RF_RETRO_paper").waic
+    empirical = load_run_waic("striatum_DIFF-RF_RETRO").waic
     rows = DataFrame(null_type=String[], source=String[], waic=Float64[], is_empirical=Bool[])
     for row in eachrow(connectivity)
         push!(rows, ("connectivity", String(row.source), Float64(row.waic), false))
@@ -92,8 +92,8 @@ function export_null_waic()
     for row in eachrow(seeding)
         push!(rows, ("seeding", String(row.source), Float64(row.waic), false))
     end
-    push!(rows, ("connectivity", "striatum_DIFF-RF_RETRO_paper", empirical, true))
-    push!(rows, ("seeding", "striatum_DIFF-RF_RETRO_paper", empirical, true))
+    push!(rows, ("connectivity", "striatum_DIFF-RF_RETRO", empirical, true))
+    push!(rows, ("seeding", "striatum_DIFF-RF_RETRO", empirical, true))
     CSV.write(joinpath(OUT_DIR, "figure4_null_waic.csv"), rows)
 end
 

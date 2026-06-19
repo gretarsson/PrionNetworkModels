@@ -12,7 +12,7 @@ from panel_export import ROOT, Crop, export_crops, write_missing_requirements
 DEPENDENCIES = [
     {"run": "runs/striatum_DIFF_RETRO and transport variants", "status": "missing"},
     {"run": "runs/striatum_DIFF-R_RETRO and transport variants", "status": "missing"},
-    {"run": "runs/striatum_DIFF-RF_RETRO_paper plus transport variants", "status": "partial"},
+    {"run": "runs/striatum_DIFF-RF_RETRO", "status": "partial"},
 ]
 
 

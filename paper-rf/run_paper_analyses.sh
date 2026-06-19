@@ -18,7 +18,7 @@ fi
 
 cd "$PROJECT_DIR"
 
-STRIATUM_RUN="${STRIATUM_RUN:-runs/striatum_DIFF-RF_RETRO_paper}"
+STRIATUM_RUN="${STRIATUM_RUN:-runs/striatum_DIFF-RF_RETRO}"
 HIPPO_RUN="${HIPPO_RUN:-runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_C1_C4}"
 
 STRIATUM_PARAMS="paper-rf/results/parameters/striatum_diff_rf"

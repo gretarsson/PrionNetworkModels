@@ -27,7 +27,7 @@ runs/
 The main paper analyses use these fitted runs:
 
 ```text
-runs/striatum_DIFF-RF_RETRO_paper/
+runs/striatum_DIFF-RF_RETRO/
 runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_C1_C4/
 ```
 
@@ -129,7 +129,7 @@ Export parameter tables:
 
 ```bash
 julia --project=. paper-rf/analyses/model_parameters/export_parameter_tables.jl \
-  --run runs/striatum_DIFF-RF_RETRO_paper \
+  --run runs/striatum_DIFF-RF_RETRO \
   --out-dir paper-rf/results/parameters/striatum_diff_rf
 
 julia --project=. paper-rf/analyses/model_parameters/export_parameter_tables.jl \

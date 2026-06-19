@@ -18,7 +18,7 @@ const WAIC_SAMPLES = parse(Int, get(ENV, "WAIC_POSTERIOR_SAMPLES", "300"))
 const IMPORTS = [
     (
         source = "simulations/u0_DIFF_RETRO.jls",
-        run_id = "striatum_DIFF_RETRO_paper",
+        run_id = "striatum_DIFF_RETRO",
         model = "DIFF",
         transport = "retrograde",
         holdout = "none",
@@ -46,7 +46,7 @@ const IMPORTS = [
     ),
     (
         source = "simulations/DIFFG_RETRO.jls",
-        run_id = "striatum_DIFF-R_RETRO_paper",
+        run_id = "striatum_DIFF-R_RETRO",
         model = "DIFF-R",
         transport = "retrograde",
         holdout = "none",
@@ -74,7 +74,7 @@ const IMPORTS = [
     ),
     (
         source = "simulations/DIFFGA_RETRO.jls",
-        run_id = "striatum_DIFF-RF_RETRO_paper",
+        run_id = "striatum_DIFF-RF_RETRO",
         model = "DIFF-RF",
         transport = "retrograde",
         holdout = "none",

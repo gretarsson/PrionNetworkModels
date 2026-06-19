@@ -11,7 +11,7 @@ from panel_export import ROOT, Crop, export_crops, write_missing_requirements
 
 
 DEPENDENCIES = [
-    {"run": "runs/striatum_DIFF-RF_RETRO_paper", "status": "available"},
+    {"run": "runs/striatum_DIFF-RF_RETRO", "status": "available"},
     {"run": "runs/striatum_DIFF-RF_RETRO_connectivity_nulls", "status": "missing"},
     {"run": "runs/striatum_DIFF-RF_RETRO_seed_nulls", "status": "missing"},
 ]
