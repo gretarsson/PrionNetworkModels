@@ -1,45 +1,131 @@
-# Paper Reproduction Layer
+# Rise-And-Fall Alpha-Synuclein Paper
 
-This directory contains the paper-specific analyses that sit on top of the reusable
-`PrionNetworkModels` package.
+This folder contains the analyses used to reproduce the paper figures.
 
-The core package should stay general: model definitions, inference, run bundles,
-merging, and model diagnostics live in `src/`, `scripts/`, `configs/`, and `cluster/`.
-Analyses that exist to reproduce this manuscript live here.
+Large fitted inference objects are not stored in git. To reproduce the paper
+figures from the finalized inferences, download the archived `runs/` artifact
+and place the run folders under the repository-level `runs/` directory.
 
-## Main Analysis Targets
+## Required Inputs
 
-The current manuscript requires these paper-specific analyses:
+Small curated inputs are tracked here:
 
-- posterior parameter export for selected DIFF-RF run bundles
-- gene-expression associations with rise (`beta`) and fall (`gamma`) parameters
-- PCA of gene-level `beta`/`gamma` regression coefficients
-- pre-ranked KEGG/GSEA enrichment along the PCA vulnerability axis
-- cell-type and monoaminergic-score associations with the same axis
-- striatum/hippocampus comparison of gene-parameter associations
+```text
+paper-rf/data/
+  striatum/
+  hippocampus/
+  transcriptomics/
+  cell_types/
+```
 
-## Inputs
+Large posterior bundles should be placed here:
 
-Curated paper input tables are stored in:
+```text
+runs/
+```
 
-- `paper-rf/data/transcriptomics/avg_Pangea_exp.csv`
-- `paper-rf/data/cell_types/connectome_celltype.csv`
-
-The modeling inputs remain in `paper-rf/data/`. Large generated run bundles remain in
-`runs/` and are not part of the source package API.
-
-The manuscript figures are regenerated from fitted posterior bundles. These are
-large artifacts and are intentionally not tracked in git. After downloading the
-archived inference outputs, place them under `runs/` with these names:
+The main paper analyses use these fitted runs:
 
 ```text
 runs/striatum_DIFF-RF_RETRO_paper/
 runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_C1_C4/
 ```
 
-## Recommended Run Order
+Figures 2-5 also use translated model-comparison and null-model bundles under
+`runs/`. The null-model folders store WAIC summaries rather than full posterior
+chains.
+
+## Reproduce Main Figure Panels
 
 From the repository root:
+
+```bash
+bash paper-rf/run_main_figure_panels.sh
+```
+
+This writes independent PDF/PNG panels to:
+
+```text
+paper-rf/figures/Figure2/
+paper-rf/figures/Figure3/
+paper-rf/figures/Figure4/
+paper-rf/figures/Figure5/
+paper-rf/figures/Figure6/
+paper-rf/figures/Figure7/
+```
+
+Each folder also contains `missing_requirements.md`. It should say `None.` when
+all required run bundles are available.
+
+Generated figures and tables are ignored by git:
+
+```text
+paper-rf/figures/
+paper-rf/results/
+```
+
+## Reproduce Biological Analyses
+
+The main biological workflow exports posterior parameters, runs gene-expression
+PCA, runs cell-type associations, compares striatum and hippocampus, and creates
+the manuscript panels:
+
+```bash
+bash paper-rf/run_paper_analyses.sh
+```
+
+To include KEGG/GSEA enrichment:
+
+```bash
+RUN_GSEA=1 bash paper-rf/run_paper_analyses.sh
+```
+
+The workflow uses all transcriptomics-matched regions by default for the final
+figure panels.
+
+## Figures 6 And 7
+
+To rebuild only the vulnerability-axis panels:
+
+```bash
+paper-rf/python/.venv/bin/python paper-rf/analyses/rebuild_figures_6_7.py
+paper-rf/python/.venv/bin/python paper-rf/analyses/plotting/update_figure6_ai_panels.py
+```
+
+Outputs:
+
+```text
+paper-rf/figures/Figure6/
+paper-rf/figures/Figure7/
+```
+
+## Appendix Vulnerability Panels
+
+```bash
+paper-rf/python/.venv/bin/python paper-rf/analyses/build_appendix_vulnerability_inputs.py
+paper-rf/python/.venv/bin/python paper-rf/analyses/plotting/update_appendix_vulnerability_figures.py
+```
+
+## Optional: Import Old Inference Files
+
+The final reproduction workflow does not require the old `synuclein_spread`
+repository if the archived `runs/` artifact has already been downloaded.
+
+For provenance, this repository includes a one-time importer that converts old
+`synuclein_spread` `.jls` inference files into the current run-bundle format:
+
+```bash
+julia --project=/path/to/synuclein_spread \
+  paper-rf/analyses/figures/import_synuclein_spread_runs.jl
+julia --project=. paper-rf/analyses/figures/export_run_bundle_waic.jl
+```
+
+After import, the figure scripts read from `runs/` and no longer need
+`synuclein_spread`.
+
+## Useful Individual Commands
+
+Export parameter tables:
 
 ```bash
 julia --project=. paper-rf/analyses/model_parameters/export_parameter_tables.jl \
@@ -51,7 +137,7 @@ julia --project=. paper-rf/analyses/model_parameters/export_parameter_tables.jl 
   --out-dir paper-rf/results/parameters/hippocampus_diff_rf
 ```
 
-Then create gene-parameter PCA outputs:
+Run gene-parameter PCA:
 
 ```bash
 python paper-rf/analyses/transcriptomics/gene_parameter_pca.py \
@@ -59,27 +145,9 @@ python paper-rf/analyses/transcriptomics/gene_parameter_pca.py \
   --beta paper-rf/results/parameters/striatum_diff_rf/beta.csv \
   --gamma paper-rf/results/parameters/striatum_diff_rf/gamma.csv \
   --out-dir paper-rf/results/transcriptomics/striatum
-
-python paper-rf/analyses/transcriptomics/gene_parameter_pca.py \
-  --expression paper-rf/data/transcriptomics/avg_Pangea_exp.csv \
-  --beta paper-rf/results/parameters/hippocampus_diff_rf/beta.csv \
-  --gamma paper-rf/results/parameters/hippocampus_diff_rf/gamma.csv \
-  --out-dir paper-rf/results/transcriptomics/hippocampus
 ```
 
-By default, the figure workflow uses all transcriptomics-matched regions. The
-PCA scripts also expose filtering options such as `--beta-min` for sensitivity
-checks.
-
-Optional GSEA requires `gseapy` and internet/cache access to the Enrichr library:
-
-```bash
-python paper-rf/analyses/transcriptomics/run_gsea.py \
-  --input paper-rf/results/transcriptomics/striatum/gene_eta_correlations.csv \
-  --out-dir paper-rf/results/enrichment/striatum
-```
-
-Cell-type associations:
+Run cell-type associations:
 
 ```bash
 python paper-rf/analyses/cell_types/cell_type_axis_associations.py \
@@ -87,101 +155,3 @@ python paper-rf/analyses/cell_types/cell_type_axis_associations.py \
   --cell-types paper-rf/data/cell_types/connectome_celltype.csv \
   --out-dir paper-rf/results/cell_types/striatum
 ```
-
-Compare striatal and hippocampal gene-axis structure:
-
-```bash
-python paper-rf/analyses/transcriptomics/compare_axes.py \
-  --striatum-dir paper-rf/results/transcriptomics/striatum \
-  --hippocampus-dir paper-rf/results/transcriptomics/hippocampus \
-  --out-dir paper-rf/results/transcriptomics/striatum_vs_hippocampus
-```
-
-Create manuscript-style biological figure panels:
-
-```bash
-python paper-rf/analyses/plotting/plot_biological_figures.py \
-  --results-root paper-rf/results \
-  --out-dir paper-rf/figures/biological
-```
-
-To regenerate the final manuscript panels for Figures 6 and 7:
-
-```bash
-paper-rf/python/.venv/bin/python paper-rf/analyses/rebuild_figures_6_7.py
-paper-rf/python/.venv/bin/python paper-rf/analyses/plotting/update_figure6_ai_panels.py
-```
-
-This writes the independent PDF panels used for manual composition under:
-
-```text
-paper-rf/figures/Figure6/
-paper-rf/figures/Figure7/
-```
-
-To rebuild the current independent panel folders for the main scientific figures,
-run:
-
-```bash
-bash paper-rf/run_main_figure_panels.sh
-```
-
-This writes:
-
-- `paper-rf/figures/Figure2/`: transport WAIC panel.
-- `paper-rf/figures/Figure3/`: model WAIC, run-generated predicted-versus-observed panels, run-generated top-4 retrodiction panels, and timepoint agreement panel.
-- `paper-rf/figures/Figure4/`: null-model WAIC panel.
-- `paper-rf/figures/Figure5/`: held-out predicted-versus-observed and top-4 retrodiction panels.
-- `paper-rf/figures/Figure6/` and `paper-rf/figures/Figure7/`: vulnerability-axis panels.
-
-The Figure 2, Figure 4, and Figure 5 source inferences can be imported from the
-original `synuclein_spread` artifacts with:
-
-```bash
-julia --project=/Users/gretarsson/Desktop/synuclein_spread \
-  paper-rf/analyses/figures/import_synuclein_spread_runs.jl
-julia --project=. paper-rf/analyses/figures/export_run_bundle_waic.jl
-```
-
-After those commands, `paper-rf/analyses/figures/rebuild_model_figures.py`
-regenerates the Figure 2-5 scientific panels from `runs/` bundles and run-derived
-WAIC tables. The `synuclein_spread` environment is only needed for the one-time
-translation/import step; plotting then reads from this repository. Each figure
-folder contains a `missing_requirements.md` file; it
-should say `None.` when all inputs for that figure are available.
-
-The end-to-end convenience wrapper runs the parameter export, transcriptomics,
-cell-type analyses, axis comparison, and plotting separately for three region
-filters:
-
-- `all`: all transcriptomics-matched regions, no posterior-update filter
-- `beta_positive`: `beta > 0`, no posterior-update filter
-- `updated`: `beta > 0` and both `beta`/`gamma` posterior-updated with
-  `ks_pvalue < 0.001`
-
-```bash
-bash paper-rf/run_paper_analyses.sh
-```
-
-To also regenerate full KEGG/GSEA outputs before plotting, run:
-
-```bash
-RUN_GSEA=1 bash paper-rf/run_paper_analyses.sh
-```
-
-By default, the hippocampus analysis uses the DIFF-RF run initialized with
-striatal posterior-derived priors for global parameters (`rho`, `alpha`, and
-`sigma`). To use the normal hippocampus merge instead, override `HIPPO_RUN`.
-
-Generated tables are written under `paper-rf/results/`, and generated figures are
-written under `paper-rf/figures/`. Both directories are ignored by git.
-
-Appendix vulnerability-axis panels are regenerated with:
-
-```bash
-paper-rf/python/.venv/bin/python paper-rf/analyses/build_appendix_vulnerability_inputs.py
-paper-rf/python/.venv/bin/python paper-rf/analyses/plotting/update_appendix_vulnerability_figures.py
-```
-
-Only paper-critical analysis code should live here. General model functionality
-should remain in the main package.

@@ -1,42 +1,38 @@
 # PrionNetworkModels
 
-`PrionNetworkModels` is a Julia toolkit for fitting and analyzing network models of prion-like neurodegenerative spread.
+Julia code for fitting network models of prion-like pathology spread.
 
-The current public model names are:
+The package currently supports four model families:
 
 - `DIFF`
 - `DIFF-R`
 - `DIFF-RF`
 - `LOCAL-RF`
 
-The reusable modeling package lives in `src/`, with general command-line helpers in
-`scripts/` and cluster wrappers in `cluster/`. Paper-specific analyses and curated
-inputs are isolated by project:
+The reusable package code is in `src/`. Command-line entry points are in
+`scripts/`. Paper-specific analyses are kept in:
 
-- `paper-rf/`: rise-and-fall alpha-synuclein paper
-- `paper-copath/`: synuclein/tau/A-beta co-pathology paper
+- `paper-rf/`: rise-and-fall alpha-synuclein manuscript
+- `paper-copath/`: co-pathology analyses
 
-This keeps the core package useful for future projects and students without
-mixing manuscript-specific workflows together.
+## Installation
 
-## What The Workflow Looks Like
+From the repository root:
 
-The intended workflow is:
+```bash
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
+```
 
-1. prepare a network CSV and an observations CSV,
-2. write a config file that points to those files and chooses a model,
-3. run inference,
-4. save a structured run bundle,
-5. make plots directly from that run bundle.
-
-The important workflow change is that we do not save a Julia-specific opaque blob and then try to remember later what it meant. Instead, each run has its own folder with a stable layout.
+Most paper plotting scripts use Python. The paper workflow expects the virtual
+environment at `paper-rf/python/.venv/`; see [paper-rf/README.md](paper-rf/README.md)
+for the manuscript commands.
 
 ## Run Bundles
 
-Every model fit writes to a folder under `runs/`, for example:
+Each model fit is saved as one directory under `runs/`:
 
 ```text
-runs/smoke-fit-diff-rf/
+runs/example-fit/
   spec.toml
   metadata.json
   posterior.h5
@@ -46,49 +42,21 @@ runs/smoke-fit-diff-rf/
   plots/
 ```
 
-What each file means:
+Important files:
 
-- `spec.toml`
-  - the run recipe you asked for
-  - model name, transport mode, data paths, seed choices, and inference settings
-- `metadata.json`
-  - bundle bookkeeping
-  - run id, creation metadata, and a manifest of the files in the bundle
-- `posterior.h5`
-  - the full posterior output from MCMC
-  - this is the main raw inference result
-- `posterior_summary.csv`
-  - quick human-readable summaries of the posterior parameters
-  - useful for inspection without opening the full posterior file
-- `diagnostics.json`
-  - basic run information such as sampler and iteration counts
-  - later this should also hold richer convergence diagnostics
-- `predictions_train.csv`
-  - model predictions at the observation timepoints
-  - useful for predicted-vs-observed comparisons
-- `plots/`
-  - generated figures for that run
-  - for example predicted-vs-observed and one retrodiction plot per region
+- `spec.toml`: model, data paths, seed choices, and inference settings.
+- `posterior.h5`: posterior samples.
+- `posterior_summary.csv`: parameter summaries.
+- `diagnostics.json`: sampler and convergence metadata.
+- `predictions_train.csv`: model predictions at observed timepoints.
+- `plots/`: generated diagnostic and fit plots.
 
-The main idea is that one fit lives in one place. You should not have to remember which script produced which figure or which posterior belongs to which dataset.
+Large `runs/` folders are not tracked by git. For paper reproduction, download
+the archived run bundles separately and place them in `runs/`.
 
-The observed dataset itself is not copied into every run bundle. The run spec points back to the canonical dataset under `data/`, which avoids duplicating the same observation matrix across many runs.
+## Input Data Format
 
-To keep runs portable between cluster and local environments, the run-bundle `spec.toml` stores repo-relative data paths like `data/examples/observations.csv` whenever possible instead of machine-specific absolute paths.
-
-## Input Files
-
-### 1. Network CSV
-
-The network file is a square matrix with region labels.
-
-Expected format:
-
-- first column: region labels
-- remaining columns: edge weights
-- column headers: region labels in the same order
-
-Example:
+Network files are square CSV matrices with region labels:
 
 ```csv
 region,r1,r2,r3
@@ -97,17 +65,7 @@ r2,0.2,0,0.1
 r3,0.4,0.1,0
 ```
 
-### 2. Observation CSV
-
-The observation file is longitudinal pathology data.
-
-Expected format:
-
-- first column: sample or replicate ID
-- second column: timepoint
-- remaining columns: pathology values per region
-
-Example:
+Observation files contain longitudinal pathology measurements:
 
 ```csv
 sample_id,timepoint,r1,r2,r3
@@ -116,15 +74,13 @@ mouse_1,0.3,0.3,0.02,0.01
 mouse_1,1.0,0.2,0.05,0.03
 ```
 
-## How To Choose The Model And Run Settings
+## Fitting A Model
 
-You do that in a TOML config file under `configs/`.
-
-Example: [diff_r.toml](configs/examples/diff_r.toml)
+Model settings are stored in TOML config files. A minimal example:
 
 ```toml
 [model]
-name = "DIFF-R"
+name = "DIFF-RF"
 transport = "retrograde"
 parameter_sharing = "independent"
 
@@ -138,263 +94,55 @@ infer_seed = true
 
 [inference]
 n_chains = 1
-target_acceptance = 0.8
 sampler = "NUTS"
 n_samples = 150
 n_warmup = 150
+target_acceptance = 0.8
 
 [holdout]
 strategy = "none"
 ```
 
-### What each section means
+Run inference:
 
-- `[model]`
-  - `name`: which dynamical model to fit
-  - `transport`: `retrograde`, `anterograde`, `bidirectional`, or `euclidean`
-  - `parameter_sharing`: currently `independent`, with bilateral sharing planned as a first-class mode
-
-- `[data]`
-  - `network`: path to the connectivity matrix
-  - `observations`: path to the pathology data
-
-- `[seeding]`
-  - `seed_indices`: which region indices are the initial seed sites
-  - `infer_seed`: whether the initial seed magnitude should be inferred
-  - `LOCAL-RF` ignores seeded propagation and instead infers one local initial condition `u0[i]` per region; `seed_indices` are retained for diagnostics and seed-region plots
-
-- `[inference]`
-  - `sampler`: currently `NUTS` or `MH`
-  - `n_samples`: number of posterior samples to keep
-  - `n_warmup`: warmup/adaptation iterations for `NUTS`
-  - `target_acceptance`: `NUTS` target acceptance rate
-
-- `[holdout]`
-  - reserved for out-of-sample workflows
-
-## How Priors Work Right Now
-
-Default priors are defined in code in [inference.jl](src/inference.jl), in the `default_priors` function.
-
-That means:
-
-- model choice, transport, seeds, and inference settings are user-facing in the config,
-- default prior families are still code-facing for now,
-- selected parameters can optionally use posterior-derived priors from an earlier run bundle.
-
-This is an honest temporary state while the core workflow is being stabilized. The next step will be to make priors configurable by profile, and then configurable more directly from TOML.
-
-### Posterior-Derived Priors
-
-A run can borrow selected parameter priors from an earlier run bundle by adding a `[priors.posterior]` block.
-
-For example, this hippocampus config uses the merged striatum `DIFF-RF` posterior for only the global parameters `rho`, `alpha`, and `sigma`:
-
-```toml
-[priors.posterior]
-source = "runs/striatum_DIFF-RF_RETRO"
-parameters = ["rho", "alpha", "sigma"]
-widen = 2.5
-min_sd = 1e-6
+```bash
+julia --project=. scripts/fit_model.jl \
+  --config configs/examples/diff_rf.toml \
+  --run-id example-fit
 ```
 
-The source can be either a run directory containing `posterior.h5` or a direct path to a posterior HDF5 file. Each selected prior is fit as `Normal(posterior_mean, widen * posterior_sd)`, preserving nonnegative support when the default prior is nonnegative.
+Plot a completed run:
 
-You can also use wildcard patterns:
-
-```toml
-patterns = ["beta[*]"]
+```bash
+julia --project=. scripts/plot_run.jl --run runs/example-fit
 ```
 
-Omit local parameters such as `beta[*]` and `gamma[*]` when you want only global posterior priors.
+## Synthetic Example
 
-## Quick Start: Synthetic Example
-
-### Step 1. Generate a tiny synthetic dataset
-
-This makes a random `N=10` network and simulated DIFF-RF observations:
+Generate a small synthetic dataset:
 
 ```bash
 julia --project=. scripts/reproduce_core_examples.jl
 ```
 
-This writes:
-
-- [network.csv](data/examples/network.csv)
-- [observations.csv](data/examples/observations.csv)
-- [observations_summary.csv](data/examples/observations_summary.csv)
-- [generating_parameters_diff_rf.csv](data/examples/generating_parameters_diff_rf.csv)
-
-### Step 2. Run Bayesian inference on that synthetic example
-
-Option A: use the dedicated smoke-test script
+Run a short smoke-test fit:
 
 ```bash
 julia --project=. scripts/smoke_fit_diff_rf.jl
 ```
 
-For the uncoupled local rise-and-fall model:
+For the uncoupled local model:
 
 ```bash
 julia --project=. scripts/smoke_fit_local_rf.jl
 ```
 
-For a tiny four-chain `LOCAL-RF` smoke test that also merges chains and plots diagnostics:
+## Multi-Chain Runs
 
-```bash
-scripts/smoke_fit_local_rf_multichain.sh
-```
+Large fits are usually run as one chain per job and merged afterward.
 
-Option B: use the generic runner
-
-```bash
-julia --project=. scripts/fit_model.jl \
-  --config configs/examples/diff_r.toml \
-  --run-id my-first-fit \
-  --samples 150 \
-  --warmup 150
-```
-
-### Step 3. Make plots from the run bundle
-
-```bash
-julia --project=. scripts/plot_run.jl \
-  --run runs/my-first-fit
-```
-
-This writes plots under:
-
-```text
-runs/my-first-fit/plots/
-  predicted_vs_observed.pdf
-  retrodiction/
-```
-
-## Cluster Workflow
-
-For larger real datasets, the intended workflow is:
-
-1. submit one chain per cluster job,
-2. merge the finished chain runs into one combined run,
-3. plot from the merged run.
-
-The paper-oriented striatum retrograde submission script is:
-
-```bash
-scripts/run_inferences.sh
-```
-
-That submits four single-chain jobs for each paper retrograde config:
-
-- `DIFF`
-- `DIFF-R`
-- `DIFF-RF`
-
-for both the striatum and hippocampus datasets.
-
-To submit the uncoupled striatum `LOCAL-RF` comparison, where `alpha` and `sigma` are shared globally but each region has its own `u0`, `beta`, and `gamma`:
-
-```bash
-scripts/run_striatum_local_rf_inferences.sh
-```
-
-By default this submits four single-chain jobs from [striatum_local_rf_core.toml](paper-rf/configs/striatum_local_rf_core.toml).
-
-The hippocampus configs are:
-
-- [hippocampus_core.toml](paper-rf/configs/hippocampus_core.toml)
-- [hippocampus_diff_r_core.toml](paper-rf/configs/hippocampus_diff_r_core.toml)
-- [hippocampus_diff_rf_core.toml](paper-rf/configs/hippocampus_diff_rf_core.toml)
-
-These use the hippocampal seed indices `[53, 55, 56]`, corresponding to `iCA1`, `iCA3`, and `iDG`. They fit raw replicate observations by default, matching the striatum configs.
-
-To submit the hippocampus posterior-prior `DIFF-RF` retrograde jobs that borrow striatum global parameters:
-
-```bash
-scripts/run_hippocampus_inferences.sh
-```
-
-By default this submits four posterior-prior chains to the `long` partition with a five-day wall time. You can override those choices without editing the script:
-
-```bash
-POSTERIOR_CHAINS=8 \
-SLURM_PARTITION=long \
-SLURM_TIME=5-00:00:00 \
-scripts/run_hippocampus_inferences.sh
-```
-
-To submit additional chains without resubmitting existing ones, set the starting
-chain index. For example, to submit only C5-C8:
-
-```bash
-POSTERIOR_CHAIN_START=5 \
-POSTERIOR_CHAINS=4 \
-SLURM_PARTITION=long \
-SLURM_TIME=5-00:00:00 \
-scripts/run_hippocampus_inferences.sh
-```
-
-That script expects a merged striatum `DIFF-RF` run at:
-
-```text
-runs/striatum_DIFF-RF_RETRO/posterior.h5
-```
-
-To sync all finished run folders and cluster logs back from the cluster to your local machine:
-
-```bash
-scripts/sync_runs_from_cluster.sh
-```
-
-By default, run syncing is shallow: it syncs files directly inside each top-level
-`runs/<run_id>/` bundle but does not descend into nested subfolders. To sync only
-specific top-level runs, pass the run IDs:
-
-```bash
-scripts/sync_runs_from_cluster.sh \
-  striatum_DIFF-RF_RETRO_ignore-seed_C1 \
-  striatum_DIFF-RF_RETRO_ignore-seed_C2 \
-  striatum_DIFF-RF_RETRO_ignore-seed_C3 \
-  striatum_DIFF-RF_RETRO_ignore-seed_C4
-```
-
-To restore the old full recursive `runs/` sync behavior, opt in explicitly:
-
-```bash
-scripts/sync_runs_from_cluster.sh --recursive-runs
-```
-
-To skip cluster logs and sync only run bundles:
-
-```bash
-scripts/sync_runs_from_cluster.sh --no-logs
-```
-
-By default, that script pulls from:
-
-- `alexanderc@cubic-login1:~/PrionNetworkModels/runs/`
-
-and syncs into:
-
-- `runs/`
-- `logs/`
-
-You can override the remote host or project path without editing the script, for example:
-
-```bash
-REMOTE_HOST=alexanderc@cubic-login5 \
-REMOTE_PROJECT_DIR=~/PrionNetworkModels \
-scripts/sync_runs_from_cluster.sh
-```
-
-If the cluster jobs create runs like:
-
-- `runs/striatum_DIFF-RF_RETRO_C1`
-- `runs/striatum_DIFF-RF_RETRO_C2`
-- `runs/striatum_DIFF-RF_RETRO_C3`
-- `runs/striatum_DIFF-RF_RETRO_C4`
-
-then you merge them with:
+Merge four chains named `runs/striatum_DIFF-RF_RETRO_C1` through
+`runs/striatum_DIFF-RF_RETRO_C4`:
 
 ```bash
 julia --project=. scripts/merge_chains.jl \
@@ -402,97 +150,65 @@ julia --project=. scripts/merge_chains.jl \
   --out-run-id striatum_DIFF-RF_RETRO
 ```
 
-To merge a selected subset of chains, pass the chain numbers explicitly and give the merged run a name that records the choice:
+Merge selected chains:
 
 ```bash
 julia --project=. scripts/merge_chains.jl \
   --prefix hippocampus_DIFF-RF_RETRO \
-  --chains 1,2,3 \
-  --out-run-id hippocampus_DIFF-RF_RETRO_C1_C2_C3
+  --chains 1,3,4 \
+  --out-run-id hippocampus_DIFF-RF_RETRO_C1_C3_C4
 ```
 
-This is the preferred pattern when diagnostics show that one chain landed in a different posterior mode or has a clearly lower likelihood. Keep the all-chain merge for diagnostics, then create a separate selected-chain analysis bundle for paper figures. Each merged bundle writes `source_chains.csv` so the chain provenance is explicit.
+Each merged bundle writes `source_chains.csv`.
 
-To keep the top-level `runs/` directory tidy after a merge, source chain directories can be archived under `runs/_source_chains/<merged_run_id>/`:
+## Cluster Helpers
+
+Cluster scripts live in `cluster/` and `scripts/`.
+
+Common commands:
 
 ```bash
-julia --project=. scripts/merge_chains.jl \
-  --prefix hippocampus_DIFF-RF_RETRO \
-  --chains 1,2,3 \
-  --out-run-id hippocampus_DIFF-RF_RETRO_C1_C2_C3 \
-  --archive-source-chains
+scripts/run_inferences.sh
+scripts/run_hippocampus_inferences.sh
+scripts/sync_runs_from_cluster.sh
 ```
 
-On CUBIC, prefer submitting the merge as a small batch job so Julia starts in the same clean module environment used by the inference jobs:
+By default, `sync_runs_from_cluster.sh` performs a shallow sync of each top-level
+run bundle. Use `--recursive-runs` to include nested subfolders.
+
+## Paper Reproduction
+
+The main manuscript workflow is documented in [paper-rf/README.md](paper-rf/README.md).
+
+Short version:
+
+1. Clone this repository.
+2. Download the archived `runs/` artifact.
+3. Place the downloaded run folders under `runs/`.
+4. Run:
 
 ```bash
-cluster/submit_merge_chains.sh striatum_DIFF-RF_RETRO striatum_DIFF-RF_RETRO 4
+bash paper-rf/run_main_figure_panels.sh
 ```
 
-Selected-chain merges can also be submitted through SLURM:
-
-```bash
-MERGE_CHAINS=1,2,3 \
-cluster/submit_merge_chains.sh hippocampus_DIFF-RF_RETRO hippocampus_DIFF-RF_RETRO_C1_C2_C3
-```
-
-To archive source chain directories as part of the cluster merge:
-
-```bash
-MERGE_CHAINS=1,2,3 ARCHIVE_SOURCE_CHAINS=1 \
-cluster/submit_merge_chains.sh hippocampus_DIFF-RF_RETRO hippocampus_DIFF-RF_RETRO_C1_C2_C3
-```
-
-and then plot the merged run with:
-
-```bash
-julia --project=. scripts/plot_run.jl \
-  --run runs/striatum_DIFF-RF_RETRO
-```
-
-## What Plots Are Implemented Now
-
-Current plotting support:
-
-- predicted vs observed
-- retrodiction by region
-
-These plots are generated from the run bundle. For retrodiction, the plotting code also reads `posterior.h5`, simulates a dense trajectory from the posterior mean parameters, and uses the inferred observation noise to show:
-
-- the posterior mean trajectory,
-- 50% and 90% noise bands,
-- observed mean data points,
-- a shared y-axis across all regional retrodiction plots in the same run.
-
-The plotting code currently reads the canonical observations file from `spec.toml` and computes replicate summaries on the fly. That preserves the raw replicates in one place and leaves room to add future plot modes such as:
-
-- plot the mean only
-- plot all replicate observations
-- plot mean with standard-error bars
-
-Planned next:
-
-- diagnostics plots from posterior chains
-- out-of-sample plots
-- `beta` vs `gamma` plots for `DIFF-RF`
+Generated paper outputs are written to `paper-rf/results/` and
+`paper-rf/figures/`; both are ignored by git.
 
 ## Repository Layout
 
-- `src/`
-  - core code
-- `scripts/`
-  - command-line entrypoints
-- `configs/`
-  - example and paper configs
-- `data/`
-  - example and curated paper inputs
-- `runs/`
-  - fit outputs
-- `docs/`
-  - design docs
+```text
+src/          Julia package code
+scripts/      command-line scripts
+cluster/      SLURM helpers
+configs/      example configs
+data/         example data
+paper-rf/     alpha-synuclein paper analyses
+paper-copath/ co-pathology analyses
+runs/         local/archived model outputs, not tracked
+docs/         design notes
+```
 
-For more design detail, see:
+Additional technical details:
 
-- [architecture.md](docs/architecture.md)
-- [run_format.md](docs/run_format.md)
-- [implementation_checklist.md](docs/implementation_checklist.md)
+- [docs/architecture.md](docs/architecture.md)
+- [docs/run_format.md](docs/run_format.md)
