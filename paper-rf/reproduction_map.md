@@ -10,10 +10,10 @@ These are generated from `runs/` bundles using the Julia package and plotting sc
 | Manuscript item | Content | Reproduction source |
 | --- | --- | --- |
 | Fig. 1 / overview | Experimental design and conceptual model schematic | Mostly manually composed figure; model components documented in `src/models.jl` |
-| Fig. 2 / transport | Transport mechanism model comparison | Future paper wrapper around transport configs and WAIC summaries |
-| Fig. 3 / model comparison | DIFF, DIFF-R, DIFF-RF predictive performance | `scripts/plot_run.jl`, selected merged run bundles |
-| Fig. 4 / null models | Connectivity and seed nulls | Future paper wrapper for null configs |
-| Fig. 5 / out-of-sample | Leave-final-timepoint-out prediction | Future paper wrapper for holdout configs |
+| Fig. 2 / transport | Transport mechanism model comparison | translated `runs/` bundles, `paper-rf/analyses/figures/export_run_bundle_waic.jl`, and `rebuild_figure2.py` |
+| Fig. 3 / model comparison | DIFF, DIFF-R, DIFF-RF predictive performance | `scripts/plot_run.jl`, `rebuild_figure3.py`, selected merged run bundles |
+| Fig. 4 / null models | Connectivity and seed nulls | translated null WAIC bundles, `export_run_bundle_waic.jl`, and `rebuild_figure4.py` |
+| Fig. 5 / out-of-sample | Leave-final-timepoint-out prediction | imported T-1 run bundles and `rebuild_figure5.py` |
 | Fig. S diagnostics | Rhat and chain diagnostics | `scripts/plot_run.jl` diagnostics outputs |
 | Fig. S posteriors | Prior/posterior and beta/gamma relationships | `scripts/plot_run.jl` diagnostics plus posterior summaries |
 
@@ -38,8 +38,8 @@ The current working paper choices are:
 
 | Dataset | Run bundle | Notes |
 | --- | --- | --- |
-| Striatum DIFF-RF | `runs/striatum_DIFF-RF_RETRO_C1_C3_C4` | Selected chains 1, 3, 4; chain 2 excluded based on lower/different mode |
-| Hippocampus DIFF-RF | `runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_partial_C1_C4` | Posterior-prior run using striatal global posterior priors |
+| Striatum DIFF-RF | `runs/striatum_DIFF-RF_RETRO_paper` | Manuscript striatal DIFF-RF posterior bundle |
+| Hippocampus DIFF-RF | `runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_C1_C4` | Retained hippocampal posterior mode using striatal global posterior priors |
 | Hippocampus normal DIFF-RF | `runs/hippocampus_DIFF-RF_RETRO_C1_C2_C3` | Useful comparison run without posterior-derived priors |
 
 ## Porting Status
@@ -55,11 +55,9 @@ Done:
 - striatum/hippocampus axis comparison script
 - manuscript-style biological plotting script
 - end-to-end paper wrapper that regenerates tables and biological panels
-- full filter-level analysis folders for all, beta-positive, and updated region sets
+- manuscript all-region vulnerability-axis analyses and appendix sensitivity panels
 - striatum/hippocampus gene-coefficient and regional-parameter comparison panels
 
 Still to refine:
 
-- WAIC/model-comparison paper wrappers
-- null-model and holdout paper wrappers
 - full 1000-permutation GSEA outputs for final paper archives

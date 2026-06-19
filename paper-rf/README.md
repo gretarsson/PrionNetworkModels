@@ -28,17 +28,26 @@ Curated paper input tables are stored in:
 The modeling inputs remain in `paper-rf/data/`. Large generated run bundles remain in
 `runs/` and are not part of the source package API.
 
+The manuscript figures are regenerated from fitted posterior bundles. These are
+large artifacts and are intentionally not tracked in git. After downloading the
+archived inference outputs, place them under `runs/` with these names:
+
+```text
+runs/striatum_DIFF-RF_RETRO_paper/
+runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_C1_C4/
+```
+
 ## Recommended Run Order
 
 From the repository root:
 
 ```bash
 julia --project=. paper-rf/analyses/model_parameters/export_parameter_tables.jl \
-  --run runs/striatum_DIFF-RF_RETRO_C1_C3_C4 \
+  --run runs/striatum_DIFF-RF_RETRO_paper \
   --out-dir paper-rf/results/parameters/striatum_diff_rf
 
 julia --project=. paper-rf/analyses/model_parameters/export_parameter_tables.jl \
-  --run runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_partial_C1_C4 \
+  --run runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_C1_C4 \
   --out-dir paper-rf/results/parameters/hippocampus_diff_rf
 ```
 
@@ -58,9 +67,9 @@ python paper-rf/analyses/transcriptomics/gene_parameter_pca.py \
   --out-dir paper-rf/results/transcriptomics/hippocampus
 ```
 
-By default, this applies the manuscript-style filters `beta > 0` and
-posterior-updated `beta`/`gamma` parameters (`ks_pvalue < 0.001`). For robustness
-checks like Fig. S2, pass `--no-update-filter` or adjust `--beta-min`.
+By default, the figure workflow uses all transcriptomics-matched regions. The
+PCA scripts also expose filtering options such as `--beta-min` for sensitivity
+checks.
 
 Optional GSEA requires `gseapy` and internet/cache access to the Enrichr library:
 
@@ -96,20 +105,50 @@ python paper-rf/analyses/plotting/plot_biological_figures.py \
   --out-dir paper-rf/figures/biological
 ```
 
-To regenerate the manuscript replacement panels for the gene-coefficient PCA
-using the beta-positive striatum and hippocampus analyses:
+To regenerate the final manuscript panels for Figures 6 and 7:
 
 ```bash
-paper-rf/python/.venv/bin/python paper-rf/analyses/plotting/plot_manuscript_gene_coefficients.py
+paper-rf/python/.venv/bin/python paper-rf/analyses/rebuild_figures_6_7.py
+paper-rf/python/.venv/bin/python paper-rf/analyses/plotting/update_figure6_ai_panels.py
 ```
 
-This writes matched striatum and hippocampus coefficient-cloud panels, a direct
-PC1-direction comparison, and the corresponding PCA statistics under:
+This writes the independent PDF panels used for manual composition under:
 
 ```text
-paper-rf/figures/manuscript/gene_coefficients_beta_positive/
-paper-rf/results/manuscript/gene_coefficients_beta_positive/
+paper-rf/figures/Figure6/
+paper-rf/figures/Figure7/
 ```
+
+To rebuild the current independent panel folders for the main scientific figures,
+run:
+
+```bash
+bash paper-rf/run_main_figure_panels.sh
+```
+
+This writes:
+
+- `paper-rf/figures/Figure2/`: transport WAIC panel.
+- `paper-rf/figures/Figure3/`: model WAIC, run-generated predicted-versus-observed panels, run-generated top-4 retrodiction panels, and timepoint agreement panel.
+- `paper-rf/figures/Figure4/`: null-model WAIC panel.
+- `paper-rf/figures/Figure5/`: held-out predicted-versus-observed and top-4 retrodiction panels.
+- `paper-rf/figures/Figure6/` and `paper-rf/figures/Figure7/`: vulnerability-axis panels.
+
+The Figure 2, Figure 4, and Figure 5 source inferences can be imported from the
+original `synuclein_spread` artifacts with:
+
+```bash
+julia --project=/Users/gretarsson/Desktop/synuclein_spread \
+  paper-rf/analyses/figures/import_synuclein_spread_runs.jl
+julia --project=. paper-rf/analyses/figures/export_run_bundle_waic.jl
+```
+
+After those commands, `paper-rf/analyses/figures/rebuild_model_figures.py`
+regenerates the Figure 2-5 scientific panels from `runs/` bundles and run-derived
+WAIC tables. The `synuclein_spread` environment is only needed for the one-time
+translation/import step; plotting then reads from this repository. Each figure
+folder contains a `missing_requirements.md` file; it
+should say `None.` when all inputs for that figure are available.
 
 The end-to-end convenience wrapper runs the parameter export, transcriptomics,
 cell-type analyses, axis comparison, and plotting separately for three region
@@ -137,110 +176,12 @@ striatal posterior-derived priors for global parameters (`rho`, `alpha`, and
 Generated tables are written under `paper-rf/results/`, and generated figures are
 written under `paper-rf/figures/`. Both directories are ignored by git.
 
-Filter-specific analyses are emitted under:
-
-- `paper-rf/results/filtering/all/`
-- `paper-rf/results/filtering/beta_positive/`
-- `paper-rf/results/filtering/updated/`
-- `paper-rf/figures/biological/filtering_levels/all/`
-- `paper-rf/figures/biological/filtering_levels/beta_positive/`
-- `paper-rf/figures/biological/filtering_levels/updated/`
-
-Each filter-level folder contains striatal and hippocampal PCA outputs,
-striatum/hippocampus comparison outputs, cell-type outputs, and GSEA outputs when
-`RUN_GSEA=1` is used.
-
-Filter-dependent supplementary comparison panels are emitted under each
-filter-level figure folder:
-
-- `comparison/` for gene-axis and gene-coefficient comparisons between striatal
-  and hippocampal seeding
-
-The raw regional `beta`/`gamma` comparison does not depend on the transcriptomic
-filter and is emitted once under:
-
-- `paper-rf/figures/biological/shared/`
-
-## Independent Region-Wise RF Fits
-
-For exploratory independent regional fits, submit striatum and hippocampus with
-one script:
+Appendix vulnerability-axis panels are regenerated with:
 
 ```bash
-bash paper-rf/run_region_rf_paper_rf.sh
+paper-rf/python/.venv/bin/python paper-rf/analyses/build_appendix_vulnerability_inputs.py
+paper-rf/python/.venv/bin/python paper-rf/analyses/plotting/update_appendix_vulnerability_figures.py
 ```
 
-This submits one SLURM array for the striatal dataset and one for the
-hippocampal dataset. Each array task fits one brain region with its own `alpha`,
-`beta`, `gamma`, `u0`, and `sigma`. Outputs are stored under:
-
-```text
-runs/region_rf/striatum/
-runs/region_rf/hippocampus/
-```
-
-After the arrays finish, collect the per-region outputs into summary tables:
-
-```bash
-bash paper-rf/collect_region_rf_paper_rf.sh
-```
-
-Each dataset folder then contains `region_rf_summary.csv` and
-`region_rf_posterior_summary_long.csv`, while each individual region folder
-under `regional_runs/` keeps its posterior, fit plot, traces, diagnostics, and
-predictions.
-
-To build the assembled REGION-RF plots for striatum and hippocampus, run:
-
-```bash
-bash paper-rf/plot_region_rf_paper_rf.sh
-```
-
-This writes `predictions_train.csv`, `plots/predicted_vs_observed.*`,
-`plots/diagnostics/`, and `plots/retrodiction/` into each
-`runs/region_rf/<dataset>/` folder.
-
-To repeat the paper-style transcriptomic coefficient PCA on these independent
-REGION-RF maps, run:
-
-```bash
-paper-rf/python/.venv/bin/python paper-rf/analyses/transcriptomics/region_rf_gene_pca.py
-```
-
-This fits `expression_g ~ z(beta) + z(gamma)` separately for the striatum and
-hippocampus REGION-RF maps, using beta-positive active regions with beta/gamma
-R-hat at most 1.05 by default. Outputs are written under:
-
-```text
-paper-rf/results/region_rf_gene_pca/
-paper-rf/figures/region_rf_gene_pca/
-```
-
-To include the local aggregation rate in the same gene-coefficient PCA, run:
-
-```bash
-paper-rf/python/.venv/bin/python paper-rf/analyses/transcriptomics/region_rf_gene_pca.py \
-  --parameters alpha,beta,gamma \
-  --out-dir paper-rf/results/region_rf_gene_pca_alpha_beta_gamma \
-  --figure-dir paper-rf/figures/region_rf_gene_pca_alpha_beta_gamma
-```
-
-This also writes plain regional parameter-pair panels for beta/gamma,
-alpha/gamma, and alpha/beta; those panels are not colored by the inferred axis.
-
-The default priors for these array jobs are `alpha ~ Normal+(0, 1.0)`,
-`beta ~ Normal(0, 1)`, `gamma ~ Normal+(0, 0.1)`,
-`u0 ~ Normal+(0, 0.01)`, and `sigma ~ LogNormal(0, 1)`. The default ODE
-`maxiters` is `50000`, and the script fits all replicate observations unless
-`REGION_RF_MEAN_DATA=1` is set.
-
-## Provenance
-
-This layer ports the relevant analysis logic from:
-
-- `synuclein_spread`: original gene/parameter and PCA exploration
-- `gene_enrichment`: pre-ranked GSEA and enrichment plotting
-- `cell-type-atlas`: cell-type composition and monoaminergic association analyses
-
-Only the paper-critical pieces should be kept here. General model functionality should
-remain in the main package.
+Only paper-critical analysis code should live here. General model functionality
+should remain in the main package.

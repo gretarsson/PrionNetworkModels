@@ -3,6 +3,7 @@ outputs/
 .julia_depot/
 logs/
 paper-rf/python/.venv/
+paper-rf/preview/
 paper-rf/results/
 paper-rf/figures/
 paper-rf/figures/region_rf_gene_pca/
@@ -12,6 +13,8 @@ paper-copath/figures/amyloid_sensitivity/
 paper-copath/figures/gene_condition_pca/
 paper-copath/figures/gene_condition_pca_alpha_beta_gamma/
 .DS_Store
+__pycache__/
+*.pyc
 *.jlso
 *.jld2
 *.h5

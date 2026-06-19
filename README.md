@@ -9,8 +9,6 @@ The current public model names are:
 - `DIFF-RF`
 - `LOCAL-RF`
 
-This repository is intentionally separate from the legacy `synuclein_spread` archive so the new workflow can be cleaner, slimmer, and easier for others to use.
-
 The reusable modeling package lives in `src/`, with general command-line helpers in
 `scripts/` and cluster wrappers in `cluster/`. Paper-specific analyses and curated
 inputs are isolated by project:
@@ -31,7 +29,7 @@ The intended workflow is:
 4. save a structured run bundle,
 5. make plots directly from that run bundle.
 
-The important change compared with the old repo is that we do not save a Julia-specific opaque blob and then try to remember later what it meant. Instead, each run has its own folder with a stable layout.
+The important workflow change is that we do not save a Julia-specific opaque blob and then try to remember later what it meant. Instead, each run has its own folder with a stable layout.
 
 ## Run Bundles
 
@@ -308,7 +306,7 @@ The hippocampus configs are:
 - [hippocampus_diff_r_core.toml](paper-rf/configs/hippocampus_diff_r_core.toml)
 - [hippocampus_diff_rf_core.toml](paper-rf/configs/hippocampus_diff_rf_core.toml)
 
-These use the legacy hippocampus seed indices `[53, 55, 56]`, corresponding to `iCA1`, `iCA3`, and `iDG`. They fit raw replicate observations by default, matching the striatum configs.
+These use the hippocampal seed indices `[53, 55, 56]`, corresponding to `iCA1`, `iCA3`, and `iDG`. They fit raw replicate observations by default, matching the striatum configs.
 
 To submit the hippocampus posterior-prior `DIFF-RF` retrograde jobs that borrow striatum global parameters:
 

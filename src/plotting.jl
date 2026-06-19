@@ -602,21 +602,49 @@ function predicted_observed_plot(obs, predicted_path::AbstractString, output_pat
     minxy = min(minimum(x), minimum(y))
     maxxy = max(maximum(x), maximum(y))
     metrics = predicted_observed_metrics(x, y)
+    lim_max = maxxy * 1.02
+    lim_min = min(0.0, minxy)
+    span = max(lim_max - lim_min, eps())
 
     plt = scatter(
         x,
         y;
         xlabel = "Observed",
         ylabel = "Predicted",
-        title = "Predicted vs Observed (R²=$(round(metrics.r2_origin; digits = 3)))",
+        title = "",
         legend = false,
-        alpha = 0.7,
-        markersize = 4,
-        color = RGB(0 / 255, 71 / 255, 171 / 255),
-        markerstrokecolor = :white,
-        markerstrokewidth = 0.5,
+        alpha = 0.62,
+        markersize = 11,
+        color = RGB(32 / 255, 119 / 255, 191 / 255),
+        markerstrokecolor = RGB(32 / 255, 119 / 255, 191 / 255),
+        markerstrokewidth = 0.0,
+        xlims = (lim_min, lim_max),
+        ylims = (lim_min, lim_max),
+        framestyle = :box,
+        grid = false,
+        aspect_ratio = :equal,
+        size = (520, 520),
+        guidefontsize = 16,
+        tickfontsize = 13,
+        left_margin = 6Plots.mm,
+        bottom_margin = 6Plots.mm,
+        foreground_color_axis = :gray35,
+        foreground_color_border = :gray35,
     )
-    plot!(plt, [minxy, maxxy], [minxy, maxxy]; color = :black, linestyle = :dash, linewidth = 2)
+    plot!(
+        plt,
+        [lim_min, lim_max],
+        [lim_min, lim_max];
+        color = RGB(170 / 255, 170 / 255, 170 / 255),
+        linewidth = 10,
+        alpha = 0.75,
+    )
+    annotate!(
+        plt,
+        lim_min + 0.06span,
+        lim_max - 0.12span,
+        text("R² = $(round(metrics.r2_origin; digits = 2))", 20, :left, :black),
+    )
     savefig(plt, output_path)
 
     metrics_path = joinpath(dirname(output_path), "predicted_vs_observed_metrics.csv")
@@ -648,16 +676,18 @@ function retrodiction_plots(obs, output_dir::AbstractString; run_dir::Union{Noth
     end
     global_ymax = max(global_ymax, 1e-3) * 1.05
 
-    observed_color = RGB(0 / 255, 71 / 255, 171 / 255)
+    observed_color = RGB(32 / 255, 119 / 255, 191 / 255)
     for i in eachindex(obs.labels)
         plt = plot(
-            xlabel = "Time",
+            xlabel = "Time (months)",
             ylabel = "Pathology",
             title = obs.labels[i],
             legend = :topleft,
             ylims = (0.0, global_ymax),
             linewidth = 3,
             size = (720, 420),
+            framestyle = :box,
+            grid = false,
         )
 
         if !isnothing(smooth)
@@ -725,7 +755,7 @@ function retrodiction_top_pathology_panels(obs, output_dir::AbstractString; smoo
     ranked = sortperm(peaks; rev = true)
     ranked = ranked[isfinite.(peaks[ranked])]
 
-    observed_color = RGB(0 / 255, 71 / 255, 171 / 255)
+    observed_color = RGB(32 / 255, 119 / 255, 191 / 255)
     total_regions = min(length(ranked), n_panels * regions_per_panel)
     isempty(ranked) && return output_dir
 
@@ -734,22 +764,30 @@ function retrodiction_top_pathology_panels(obs, output_dir::AbstractString; smoo
         stop_idx = min(panel_idx * regions_per_panel, total_regions)
         region_indices = ranked[start_idx:stop_idx]
 
-        ymax = maximum(skipmissing(vec(obs.mean[region_indices, :])))
-        if !isnothing(smooth)
-            ymax = max(ymax, maximum(smooth.upper90[region_indices, :]))
-        end
-        ymax = max(ymax, 1e-3) * 1.08
-
         subplots = Plots.Plot[]
         for (rank_idx, region_idx) in enumerate(region_indices)
-            rank = start_idx + rank_idx - 1
+            region_ymax = maximum(skipmissing(obs.mean[region_idx, :] .+ obs.se[region_idx, :]))
+            if !isnothing(smooth)
+                region_ymax = max(region_ymax, maximum(smooth.upper90[region_idx, :]))
+            end
+            region_ymax = max(region_ymax, 1e-3) * 1.12
+
             plt = plot(
-                xlabel = "Time",
-                ylabel = "Pathology",
-                title = "#$rank $(obs.labels[region_idx])",
-                legend = rank_idx == 1 ? :topleft : false,
-                ylims = (0.0, ymax),
-                linewidth = 2.5,
+                xlabel = "Time (months)",
+                ylabel = isodd(rank_idx) ? "α-synuclein pathology" : "",
+                title = obs.labels[region_idx],
+                legend = false,
+                ylims = (0.0, region_ymax),
+                linewidth = 3.8,
+                framestyle = :box,
+                grid = false,
+                foreground_color_axis = :gray35,
+                foreground_color_border = :gray35,
+                titlefontsize = 17,
+                guidefontsize = 16,
+                tickfontsize = 13,
+                left_margin = 3Plots.mm,
+                bottom_margin = 4Plots.mm,
             )
 
             if !isnothing(smooth)
@@ -761,8 +799,8 @@ function retrodiction_top_pathology_panels(obs, output_dir::AbstractString; smoo
                         smooth.mean[region_idx, :] .- smooth.lower90[region_idx, :],
                         smooth.upper90[region_idx, :] .- smooth.mean[region_idx, :],
                     ),
-                    fillalpha = 0.16,
-                    fillcolor = :gray70,
+                    fillalpha = 0.18,
+                    fillcolor = :gray80,
                     linealpha = 0.0,
                     label = "90% noise band",
                 )
@@ -770,8 +808,21 @@ function retrodiction_top_pathology_panels(obs, output_dir::AbstractString; smoo
                     plt,
                     smooth.timepoints,
                     smooth.mean[region_idx, :];
+                    ribbon = (
+                        smooth.mean[region_idx, :] .- smooth.lower50[region_idx, :],
+                        smooth.upper50[region_idx, :] .- smooth.mean[region_idx, :],
+                    ),
+                    fillalpha = 0.22,
+                    fillcolor = :gray55,
+                    linealpha = 0.0,
+                    label = "50% noise band",
+                )
+                plot!(
+                    plt,
+                    smooth.timepoints,
+                    smooth.mean[region_idx, :];
                     color = :black,
-                    linewidth = 2.7,
+                    linewidth = 5.6,
                     label = "Posterior mean",
                 )
             end
@@ -783,9 +834,10 @@ function retrodiction_top_pathology_panels(obs, output_dir::AbstractString; smoo
                 yerror = obs.se[region_idx, :],
                 label = "Observed mean ± SE",
                 color = observed_color,
-                markersize = 4,
-                markerstrokecolor = :white,
-                markerstrokewidth = 0.6,
+                markersize = 12,
+                markerstrokecolor = observed_color,
+                markerstrokewidth = 0.0,
+                linewidth = 4.0,
             )
             push!(subplots, plt)
         end
@@ -794,8 +846,9 @@ function retrodiction_top_pathology_panels(obs, output_dir::AbstractString; smoo
         panel = plot(
             subplots...;
             layout = layout,
-            size = (1100, 820),
-            plot_title = "Top observed pathology regions $(start_idx)-$(stop_idx)",
+            size = (1000, 740),
+            plot_title = "",
+            margin = 4Plots.mm,
         )
         filename = "top_observed_pathology_$(start_idx)_to_$(stop_idx)"
         savefig(panel, joinpath(output_dir, "$filename.pdf"))

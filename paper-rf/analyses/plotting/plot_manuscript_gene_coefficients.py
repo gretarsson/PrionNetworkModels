@@ -99,7 +99,7 @@ def load_dataset(results_root: Path, filter_level: str, dataset: str) -> GeneCoe
     pc1 = np.array([pc1_row["loading_beta"], pc1_row["loading_gamma"]], dtype=float)
     pc2 = np.array([pc2_row["loading_beta"], pc2_row["loading_gamma"]], dtype=float)
 
-    # Keep the same orientation convention as the old manuscript plot: the
+    # Keep the same orientation convention as the manuscript plot: the
     # dominant fall-aligned PC1 points upward in gamma.
     if pc1[1] < 0:
         pc1 = -pc1
