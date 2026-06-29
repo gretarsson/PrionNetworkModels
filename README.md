@@ -212,3 +212,7 @@ Additional technical details:
 
 - [docs/architecture.md](docs/architecture.md)
 - [docs/run_format.md](docs/run_format.md)
+
+## License
+
+This code is released under the [MIT License](LICENSE).
