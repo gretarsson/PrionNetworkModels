@@ -7,6 +7,8 @@ figure panels. The preprint is available on bioRxiv:
 https://doi.org/10.64898/2026.03.27.714785
 ```
 
+Inference is run in Julia. Downstream analyses and plotting are run in Python.
+
 The pathology, network, transcriptomic, and cell-type data are included in
 `paper-rf/data/`. The posterior inference chains used in the paper are too large
 for git and are archived on Zenodo:
