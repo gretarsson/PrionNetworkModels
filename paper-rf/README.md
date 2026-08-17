@@ -1,7 +1,11 @@
-# Alpha-Synuclein Paper Analyses
+# Rise-and-fall dynamics reveal a molecular and cellular vulnerability axis in prion-like α-synuclein propagation
 
 This folder contains the scripts used to reproduce the manuscript analyses and
-figure panels.
+figure panels. The preprint is available on bioRxiv:
+
+```text
+https://doi.org/10.64898/2026.03.27.714785
+```
 
 The pathology, network, transcriptomic, and cell-type data are included in
 `paper-rf/data/`. The posterior inference chains used in the paper are too large
@@ -44,9 +48,14 @@ julia --project=. scripts/merge_chains.jl \
 
 julia --project=. scripts/merge_chains.jl \
   --prefix hippocampus_DIFF-RF_RETRO_striatum-global-priors \
-  --chains 3,4 \
-  --out-run-id hippocampus_DIFF-RF_RETRO_striatum-global-priors_C3_C4
+  --chains 1,2,3,4 \
+  --out-run-id hippocampus_DIFF-RF_RETRO_striatum-global-priors
 ```
+
+For any new run, inspect the chain diagnostics before using the merged
+posterior. In the manuscript analysis, lower-likelihood hippocampal chains were
+excluded after this diagnostic check; the exact posterior bundles used in the
+paper are provided in the Zenodo inference archive.
 
 ## 2. Run The Analyses
 
@@ -62,6 +71,9 @@ Run the manuscript analyses:
 ```bash
 RUN_GSEA=1 bash paper-rf/run_paper_analyses.sh
 ```
+
+If using different merged run names, set `STRIATUM_RUN` and `HIPPO_RUN` when
+running this command.
 
 This exports posterior parameter tables, computes vulnerability axes, runs
 gene-expression analyses, runs cell-type analyses, and writes intermediate
