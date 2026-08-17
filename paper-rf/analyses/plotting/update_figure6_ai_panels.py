@@ -37,6 +37,7 @@ STRIATUM_TRANS_DIR = ROOT / "paper-rf" / "results" / "pooled_z" / "all" / "stria
 HIPPO_TRANS_DIR = ROOT / "paper-rf" / "results" / "pooled_z" / "all" / "hippocampus_C1_C4" / "transcriptomics"
 PC1_DIR_CSV = ROOT / "paper-rf" / "figures" / "pooled_z" / "all" / "pc1_direction" / "pc1_direction_comparison.csv"
 FIG7_OUT_DIR = ROOT / "paper-rf" / "figures" / "Figure7"
+FIG7_EXTRA_OUT_DIR = ROOT / "paper-rf" / "figures" / "figure7"
 
 TERM_LABELS = {
     "Parkinson disease": "Parkinson\ndisease",
@@ -51,6 +52,9 @@ TERM_LABELS = {
     "Starch and sucrose metabolism": "Starch/sucrose\nmetabolism",
     "Protein processing in endoplasmic reticulum": "Protein processing\nin ER",
     "Non-alcoholic fatty liver disease (NAFLD)": "NAFLD",
+    "Valine, leucine and isoleucine degradation": "Valine, leucine and\nisoleucine degradation",
+    "Biosynthesis of unsaturated fatty acids": "Biosynthesis of\nunsaturated fatty acids",
+    "Primary bile acid biosynthesis": "Primary bile acid\nbiosynthesis",
 }
 
 CATEGORY_LABELS = {
@@ -85,6 +89,14 @@ def q_stars(q: float) -> str:
     if q < 0.05:
         return "*"
     return ""
+
+
+def q_text(q: float) -> str:
+    if not np.isfinite(q):
+        return "q=n/a"
+    if q < 0.001:
+        return "q<0.001"
+    return f"q={q:.3g}"
 
 
 def p_stars(p: float) -> str:
@@ -134,7 +146,38 @@ def category_summary(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def plot_gsea_top(enrich_dir: Path, out_file: Path) -> None:
+def top_gsea_terms(enrich_dir: Path, n: int = 10) -> list[str]:
+    df = load_gsea(enrich_dir / "gsea_results_all.tsv")
+    sig = df[df["FDR"] <= 0.05].copy()
+    sig["absNES"] = sig["NES"].abs()
+    return sig.sort_values("absNES", ascending=False).head(n)["Term"].tolist()
+
+
+def replicated_gsea_terms(striatum_dir: Path, hippocampus_dir: Path, n: int = 10) -> list[str]:
+    striatum = load_gsea(striatum_dir / "gsea_results_all.tsv").set_index("Term")
+    hippocampus = load_gsea(hippocampus_dir / "gsea_results_all.tsv").set_index("Term")
+    common = striatum.index.intersection(hippocampus.index)
+    replicated = pd.DataFrame(
+        {
+            "Term": common,
+            "Category": hippocampus.loc[common, "Category"].to_numpy(),
+            "striatum_NES": striatum.loc[common, "NES"].to_numpy(dtype=float),
+            "striatum_q": striatum.loc[common, "FDR"].to_numpy(dtype=float),
+            "hippocampus_NES": hippocampus.loc[common, "NES"].to_numpy(dtype=float),
+            "hippocampus_q": hippocampus.loc[common, "FDR"].to_numpy(dtype=float),
+        }
+    )
+    replicated = replicated[
+        (replicated["striatum_q"] <= 0.05)
+        & (replicated["hippocampus_q"] <= 0.05)
+        & ((replicated["striatum_NES"] * replicated["hippocampus_NES"]) > 0)
+    ].copy()
+    replicated = replicated.sort_values("hippocampus_NES", ascending=False)
+    replicated.to_csv(hippocampus_dir / "replicated_gsea_terms.csv", index=False)
+    return replicated.head(n)["Term"].tolist()
+
+
+def plot_gsea_top(enrich_dir: Path, out_file: Path, terms: list[str] | None = None) -> None:
     df = load_gsea(enrich_dir / "gsea_results_all.tsv")
     ranked = pd.read_csv(enrich_dir / "ranked_genes.rnk", sep="\t", header=None, names=["gene", "score"])
     ranked["score"] = pd.to_numeric(ranked["score"], errors="coerce")
@@ -146,11 +189,11 @@ def plot_gsea_top(enrich_dir: Path, out_file: Path) -> None:
         for term, genes in load_gmt(enrich_dir / "gseapy" / "gene_sets.gmt").items()
     }
 
-    sig = df[df["FDR"] <= 0.05].copy()
-    sig["absNES"] = sig["NES"].abs()
-    top = sig.sort_values("absNES", ascending=False).head(10).iloc[::-1].copy()
+    if terms is None:
+        terms = top_gsea_terms(enrich_dir, n=10)
+    top = df.set_index("Term").reindex(terms).dropna(subset=["NES"]).reset_index().iloc[::-1].copy()
 
-    fig, ax = plt.subplots(figsize=(5.45, 4.35))
+    fig, ax = plt.subplots(figsize=(6.35, 4.35))
     scores = ranked["score"].to_numpy(dtype=float)
     violins = ax.violinplot(
         [scores for _ in range(len(top))],
@@ -181,7 +224,26 @@ def plot_gsea_top(enrich_dir: Path, out_file: Path) -> None:
                 zorder=3,
                 rasterized=True,
             )
-        ax.text(1.01, i, f"{row.NES:+.2f}", va="center", fontsize=9.5, transform=ax.get_yaxis_transform())
+        ax.text(
+            1.01,
+            i,
+            f"{row.NES:+.2f}",
+            va="center",
+            ha="left",
+            fontsize=9.4,
+            transform=ax.get_yaxis_transform(),
+            clip_on=False,
+        )
+        ax.text(
+            1.13,
+            i,
+            q_text(float(row.FDR)),
+            va="center",
+            ha="left",
+            fontsize=8.2,
+            transform=ax.get_yaxis_transform(),
+            clip_on=False,
+        )
 
     ax.axvline(0, color="0.25", lw=0.9)
     ax.set_yticks(range(len(top)))
@@ -189,7 +251,8 @@ def plot_gsea_top(enrich_dir: Path, out_file: Path) -> None:
     ax.set_xlabel("r")
     lim = float(np.nanquantile(np.abs(scores), 0.995))
     ax.set_xlim(-lim * 1.08, lim * 1.08)
-    ax.text(1.01, len(top) - 0.2, "NES", ha="left", va="bottom", fontsize=10.5, transform=ax.get_yaxis_transform())
+    ax.text(1.01, len(top) - 0.2, "NES", ha="left", va="bottom", fontsize=10.2, transform=ax.get_yaxis_transform())
+    ax.text(1.13, len(top) - 0.2, "FDR", ha="left", va="bottom", fontsize=10.2, transform=ax.get_yaxis_transform())
 
     fdr_y = -0.155
     ax.text(0.0, fdr_y, "FDR", transform=ax.transAxes, ha="left", va="center", fontsize=9.5, clip_on=False)
@@ -459,8 +522,20 @@ def plot_pc1_direction(out_file: Path) -> None:
     save_pdf(fig, out_file)
 
 
+def write_figure7_panels(out_dir: Path, replicated_terms: list[str]) -> None:
+    plot_gene_coefficient_cloud(HIPPO_TRANS_DIR, out_dir / "A_gene_coefficient_cloud.pdf")
+    plot_gsea_top(HIPPO_ENRICH_DIR, out_dir / "D_gsea_top_pathways.pdf", terms=replicated_terms)
+    plot_gsea_top(HIPPO_ENRICH_DIR, out_dir / "G_gsea_hippocampus_top_pathways.pdf")
+    plot_pc1_direction(out_dir / "B_pc1_direction_comparison.pdf")
+    plot_gene_eta_comparison(out_dir / "C_gene_eta_correlation_comparison.pdf")
+    plot_cell_type_correlations(HIPPO_CELL_DIR, out_dir / "E_cell_type_correlations.pdf")
+    plot_monoaminergic_eta(HIPPO_CELL_DIR, out_dir / "F_monoaminergic_eta.pdf")
+
+
 def main() -> None:
     setup_style()
+    replicated_terms = replicated_gsea_terms(ENRICH_DIR, HIPPO_ENRICH_DIR, n=10)
+
     plot_gene_coefficient_cloud(STRIATUM_TRANS_DIR, OUT_DIR / "A_gene_coefficient_cloud.pdf")
     plot_gsea_top(ENRICH_DIR, OUT_DIR / "B_gsea_top_pathways.pdf")
     plot_category_odds(ENRICH_DIR, OUT_DIR / "C_gsea_category_odds.pdf")
@@ -468,14 +543,11 @@ def main() -> None:
     plot_cell_type_correlations(CELL_DIR, OUT_DIR / "E_cell_type_correlations.pdf")
     plot_monoaminergic_eta(CELL_DIR, OUT_DIR / "F_monoaminergic_eta.pdf")
 
-    plot_gene_coefficient_cloud(HIPPO_TRANS_DIR, FIG7_OUT_DIR / "A_gene_coefficient_cloud.pdf")
-    plot_gsea_top(HIPPO_ENRICH_DIR, FIG7_OUT_DIR / "D_gsea_top_pathways.pdf")
-    plot_pc1_direction(FIG7_OUT_DIR / "B_pc1_direction_comparison.pdf")
-    plot_gene_eta_comparison(FIG7_OUT_DIR / "C_gene_eta_correlation_comparison.pdf")
-    plot_cell_type_correlations(HIPPO_CELL_DIR, FIG7_OUT_DIR / "E_cell_type_correlations.pdf")
-    plot_monoaminergic_eta(HIPPO_CELL_DIR, FIG7_OUT_DIR / "F_monoaminergic_eta.pdf")
+    for fig7_dir in [FIG7_OUT_DIR, FIG7_EXTRA_OUT_DIR]:
+        write_figure7_panels(fig7_dir, replicated_terms)
     print(OUT_DIR)
     print(FIG7_OUT_DIR)
+    print(FIG7_EXTRA_OUT_DIR)
 
 
 if __name__ == "__main__":

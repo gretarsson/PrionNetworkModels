@@ -4,6 +4,7 @@
 from pathlib import Path
 import csv
 import json
+import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -99,7 +100,7 @@ def plot_rhat_panel(rhat: pd.DataFrame, family: str, out_name: str, title: str):
 
 def plot_loglik():
     metrics = pd.read_csv(ALL_CHAIN_RUN / "plots" / "diagnostics" / "chain_fit_metrics.csv")
-    retained = metrics["chain"].isin([1, 4])
+    retained = metrics["chain"].isin([3, 4])
     colors = np.where(retained, "#2f6f9f", "#9a9a9a")
 
     fig, ax = plt.subplots(figsize=(5.1, 3.6))
@@ -113,7 +114,7 @@ def plot_loglik():
     yspan = metrics["loglik_all"].max() - metrics["loglik_all"].min()
     yspan = yspan if yspan > 0 else 1
     for _, row in metrics.iterrows():
-        label = "retained" if row["chain"] in [1, 4] else "excluded"
+        label = "retained" if row["chain"] in [3, 4] else "excluded"
         ax.text(
             row["chain"] + 0.16,
             row["loglik_all"] + 0.035 * yspan,
@@ -130,8 +131,20 @@ def plot_loglik():
     plt.close(fig)
 
 
+def copy_fit_panels():
+    shutil.copy2(
+        ACCEPTED_RUN / "plots" / "predicted_vs_observed.pdf",
+        OUT / "predicted_vs_observed.pdf",
+    )
+    shutil.copy2(
+        ACCEPTED_RUN / "plots" / "retrodiction" / "top_pathology_panels" / "top_observed_pathology_1_to_4.pdf",
+        OUT / "top_4_regions.pdf",
+    )
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    copy_fit_panels()
     rhat = pd.read_csv(ACCEPTED_RUN / "plots" / "diagnostics" / "rhat_summary.csv")
     plot_rhat_panel(rhat, "global", "global_parameters.pdf", "Global parameters")
     plot_rhat_panel(rhat, "beta", "beta_parameters.pdf", r"$\beta$ parameters")

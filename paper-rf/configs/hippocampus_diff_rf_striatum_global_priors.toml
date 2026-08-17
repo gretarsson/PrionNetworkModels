@@ -5,7 +5,7 @@ parameter_sharing = "independent"
 
 [data]
 network = "paper-rf/data/hippocampus/network.csv"
-observations = "paper-rf/data/hippocampus/observations.csv"
+observations = "paper-rf/data/hippocampus/observations_right_ipsi.csv"
 
 [seeding]
 seed_indices = [53, 55, 56]
