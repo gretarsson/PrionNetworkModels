@@ -22,6 +22,9 @@ repository-level `runs/` folder.
 
 ## 1. Run The Inferences
 
+This stage fits the dynamical model parameters to the pathology data with MCMC
+and merges the resulting posterior chains.
+
 The paper can be reproduced directly from the archived inference chains. To
 rerun the main inferences instead, use:
 
@@ -61,6 +64,9 @@ paper are provided in the Zenodo inference archive.
 
 ## 2. Run The Analyses
 
+This stage exports posterior parameter estimates and relates them to regional
+gene expression and cell-type composition.
+
 Create the Python environment:
 
 ```bash
@@ -77,11 +83,12 @@ RUN_GSEA=1 bash paper-rf/run_paper_analyses.sh
 If using different merged run names, set `STRIATUM_RUN` and `HIPPO_RUN` when
 running this command.
 
-This exports posterior parameter tables, computes vulnerability axes, runs
-gene-expression analyses, runs cell-type analyses, and writes intermediate
-results to `paper-rf/results/`.
+The analysis outputs are written to `paper-rf/results/`.
 
 ## 3. Make The Figure Panels
+
+This stage converts the model-comparison, model-fit, transcriptomic, and
+cell-type results into the figure panels used in the manuscript.
 
 Create the independent figure panels for Figures 2-7:
 
