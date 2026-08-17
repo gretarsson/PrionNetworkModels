@@ -39,7 +39,7 @@ The current working paper choices are:
 | Dataset | Run bundle | Notes |
 | --- | --- | --- |
 | Striatum DIFF-RF | `runs/striatum_DIFF-RF_RETRO` | Striatal DIFF-RF posterior bundle |
-| Hippocampus DIFF-RF | `runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_C1_C4` | Retained hippocampal posterior mode using striatal global posterior priors |
+| Hippocampus DIFF-RF | `runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_C3_C4` | Retained hippocampal posterior mode using striatal global posterior priors |
 | Hippocampus normal DIFF-RF | `runs/hippocampus_DIFF-RF_RETRO_C1_C2_C3` | Useful comparison run without posterior-derived priors |
 
 ## Porting Status

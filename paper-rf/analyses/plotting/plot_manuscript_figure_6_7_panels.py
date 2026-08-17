@@ -20,7 +20,7 @@ from scipy.stats import fisher_exact
 FILTERS = ["all", "beta_positive"]
 DATASETS = [
     ("striatum", "Striatum", "#2b6cb0"),
-    ("hippocampus_C1_C4", "Hippocampus C1/C4", "#c2410c"),
+    ("hippocampus_C3_C4", "Hippocampus", "#c2410c"),
 ]
 CELL_ORDER = ["frac_Dopa", "frac_Glut", "frac_GABA-Glyc", "frac_Sero", "frac_Nora", "frac_Hist", "frac_Chol", "frac_GABA", "frac_Glut-GABA", "frac_Unknown"]
 CATEGORY_ORDER = ["Metabolism", "Protein homeostasis", "Synapse", "Neurodeg. disease", "Other"]
@@ -405,7 +405,7 @@ def scatter_compare(
 
 def plot_comparisons(results_root: Path, figures_root: Path, filter_key: str) -> None:
     sdir = results_root / filter_key / "striatum" / "transcriptomics"
-    hdir = results_root / filter_key / "hippocampus_C1_C4" / "transcriptomics"
+    hdir = results_root / filter_key / "hippocampus_C3_C4" / "transcriptomics"
     out = figures_root / filter_key / "comparisons"
     s_coef = pd.read_csv(sdir / "gene_parameter_coefficients.csv")
     h_coef = pd.read_csv(hdir / "gene_parameter_coefficients.csv")

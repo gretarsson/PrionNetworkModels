@@ -2,7 +2,7 @@
 """Rebuild clean Figure 6/7 biological outputs.
 
 This script uses the seed-included striatum DIFF-RF run and the converged
-hippocampus global-prior DIFF-RF C1/C4 mode as the source inferences.
+retained hippocampus global-prior DIFF-RF mode as the source inference.
 It writes a compact, navigable set of results and independent figure panels
 for the all-region and beta-positive editions.
 """
@@ -48,9 +48,9 @@ DATASETS = [
         "#2b6cb0",
     ),
     DatasetSpec(
-        "hippocampus_C1_C4",
-        "Hippocampus C1/C4",
-        Path("runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_C1_C4"),
+        "hippocampus_C3_C4",
+        "Hippocampus",
+        Path("runs/hippocampus_DIFF-RF_RETRO_striatum-global-priors_C3_C4"),
         Path("paper-rf/data/hippocampus/observations.csv"),
         "#c2410c",
     ),
@@ -439,7 +439,7 @@ def plot_gsea_dot(gsea_path: Path, fig_dir: Path) -> None:
 
 def compare_outputs(filter_key: str, results_root: Path, figures_root: Path) -> dict[str, float | str]:
     sdir = results_root / filter_key / "striatum" / "transcriptomics"
-    hdir = results_root / filter_key / "hippocampus_C1_C4" / "transcriptomics"
+    hdir = results_root / filter_key / "hippocampus_C3_C4" / "transcriptomics"
     out = figures_root / filter_key / "comparisons"
     out.mkdir(parents=True, exist_ok=True)
 
@@ -453,7 +453,7 @@ def compare_outputs(filter_key: str, results_root: Path, figures_root: Path) -> 
     fig, ax = plt.subplots(figsize=(4.5, 4.3))
     ax.axhline(0, color="0.82", lw=0.8)
     ax.axvline(0, color="0.82", lw=0.8)
-    for label, vec, color in [("Striatum", sv, "#2b6cb0"), ("Hippocampus C1/C4", hv, "#c2410c")]:
+    for label, vec, color in [("Striatum", sv, "#2b6cb0"), ("Hippocampus", hv, "#c2410c")]:
         ax.arrow(0, 0, vec[0], vec[1], color=color, lw=2.5, head_width=0.04, length_includes_head=True)
         ax.text(vec[0] * 1.12, vec[1] * 1.12, label, color=color, ha="center", va="center", fontsize=9)
     ax.set_xlim(-1.05, 1.05)
@@ -471,7 +471,7 @@ def compare_outputs(filter_key: str, results_root: Path, figures_root: Path) -> 
         "eta",
         "region_base",
         "Striatum eta",
-        "Hippocampus C1/C4 eta",
+        "Hippocampus eta",
         out / "02_region_eta_correlation",
     )
     beta_r = scatter_compare(
@@ -481,7 +481,7 @@ def compare_outputs(filter_key: str, results_root: Path, figures_root: Path) -> 
         "r_beta",
         "gene",
         "Striatum corr(gene, z(beta))",
-        "Hippocampus C1/C4 corr(gene, z(beta))",
+        "Hippocampus corr(gene, z(beta))",
         out / "03_gene_zbeta_correlation_comparison",
     )
     eta_gene_r = scatter_compare(
@@ -491,7 +491,7 @@ def compare_outputs(filter_key: str, results_root: Path, figures_root: Path) -> 
         "r",
         "gene",
         "Striatum corr(gene, eta)",
-        "Hippocampus C1/C4 corr(gene, eta)",
+        "Hippocampus corr(gene, eta)",
         out / "04_gene_eta_correlation_comparison",
     )
     return {"filter": filter_key, "pc1_angle_deg": angle, "region_eta_r": eta_r, "gene_zbeta_r": beta_r, "gene_eta_r": eta_gene_r}
@@ -534,7 +534,7 @@ def scatter_compare(
 
 def combined_gsea(filter_key: str, results_root: Path, figures_root: Path) -> None:
     s = pd.read_csv(results_root / filter_key / "striatum" / "enrichment" / "gsea_results_all.tsv", sep="\t").assign(dataset="Striatum")
-    h = pd.read_csv(results_root / filter_key / "hippocampus_C1_C4" / "enrichment" / "gsea_results_all.tsv", sep="\t").assign(dataset="Hippocampus C1/C4")
+    h = pd.read_csv(results_root / filter_key / "hippocampus_C3_C4" / "enrichment" / "gsea_results_all.tsv", sep="\t").assign(dataset="Hippocampus")
     df = pd.concat([s, h], ignore_index=True).rename(columns={"FDR q-val": "FDR"})
     df["FDR"] = pd.to_numeric(df["FDR"], errors="coerce")
     df["NES"] = pd.to_numeric(df["NES"], errors="coerce")
@@ -545,9 +545,9 @@ def combined_gsea(filter_key: str, results_root: Path, figures_root: Path) -> No
     order = plot.groupby("Term")["absNES"].mean().sort_values(ascending=True).index.tolist()
     ymap = {t: i for i, t in enumerate(order)}
     fig, ax = plt.subplots(figsize=(8.4, max(4.4, 0.34 * len(order) + 1.3)))
-    colors = {"Striatum": "#2b6cb0", "Hippocampus C1/C4": "#c2410c"}
-    offsets = {"Striatum": -0.16, "Hippocampus C1/C4": 0.16}
-    for dataset in ["Striatum", "Hippocampus C1/C4"]:
+    colors = {"Striatum": "#2b6cb0", "Hippocampus": "#c2410c"}
+    offsets = {"Striatum": -0.16, "Hippocampus": 0.16}
+    for dataset in ["Striatum", "Hippocampus"]:
         sub = plot[plot["dataset"] == dataset]
         y = np.array([ymap[t] + offsets[dataset] for t in sub["Term"]])
         weights = -np.log10(sub["FDR"].clip(lower=1e-300))
@@ -557,7 +557,7 @@ def combined_gsea(filter_key: str, results_root: Path, figures_root: Path) -> No
     ax.set_yticks(range(len(order)))
     ax.set_yticklabels(order)
     ax.set_xlabel("NES")
-    ax.set_title(f"{filter_key}: striatum vs hippocampus C1/C4 KEGG GSEA")
+    ax.set_title(f"{filter_key}: striatum vs hippocampus KEGG GSEA")
     ax.legend(frameon=False, loc="lower right")
     out = figures_root / filter_key / "comparisons"
     save(fig, out / "05_gsea_striatum_vs_hippocampus")
@@ -573,7 +573,7 @@ def combined_panel_contact_sheets(filter_key: str, figures_root: Path) -> None:
         ("Monoaminergic eta", "cell_types/04_monoaminergic_eta.png"),
         ("GSEA", "enrichment/05_gsea_top_terms.png"),
     ]
-    datasets = [("Striatum", "striatum"), ("Hippocampus C1/C4", "hippocampus_C1_C4")]
+    datasets = [("Striatum", "striatum"), ("Hippocampus", "hippocampus_C3_C4")]
     for title, rel in panels:
         fig, axes = plt.subplots(1, 2, figsize=(10.5, 4.8))
         for ax, (dataset_label, dataset_key) in zip(axes, datasets):

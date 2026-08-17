@@ -39,7 +39,7 @@ DATASETS = {
         / "results"
         / "pooled_z"
         / "all"
-        / "hippocampus_C1_C4"
+        / "hippocampus_C3_C4"
         / "transcriptomics"
         / "gene_eta_correlations.csv",
         "axis": ROOT
@@ -47,7 +47,7 @@ DATASETS = {
         / "results"
         / "pooled_z"
         / "all"
-        / "hippocampus_C1_C4"
+        / "hippocampus_C3_C4"
         / "transcriptomics"
         / "region_axis.csv",
         "color": "#00897b",

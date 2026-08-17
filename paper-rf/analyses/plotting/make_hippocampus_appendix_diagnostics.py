@@ -12,7 +12,7 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[3]
-ACCEPTED_RUN = ROOT / "runs" / "hippocampus_DIFF-RF_RETRO_striatum-global-priors_C1_C4"
+ACCEPTED_RUN = ROOT / "runs" / "hippocampus_DIFF-RF_RETRO_striatum-global-priors_C3_C4"
 ALL_CHAIN_RUN = ROOT / "runs" / "hippocampus_DIFF-RF_RETRO_striatum-global-priors_C1_C2_C3_C4"
 OUT = ROOT / "paper-rf" / "figures" / "hippocampus_appendix"
 BLUE = "#3f5fa8"
