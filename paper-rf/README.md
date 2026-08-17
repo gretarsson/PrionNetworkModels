@@ -1,11 +1,12 @@
 # Rise-And-Fall Alpha-Synuclein Paper Analyses
 
-This folder contains the code and small input tables used to reproduce the
-scientific panels in the manuscript.
+This folder contains the code used to reproduce the scientific panels in the
+manuscript.
 
-Large posterior inference files are not stored in git. To reproduce the paper
-figures exactly, download the archived inference bundles and place the run
-folders in the repository-level `runs/` directory.
+The pathology, network, transcriptomic, and cell-type data used by these scripts
+are included under `paper-rf/data/`. The fitted posterior inference chains used
+in the paper are too large for git, so they are archived separately and should be
+placed in the repository-level `runs/` directory.
 
 ## Setup
 
@@ -28,9 +29,9 @@ python3 -m venv paper-rf/python/.venv
 paper-rf/python/.venv/bin/python -m pip install -r paper-rf/python/requirements.txt
 ```
 
-## Inputs
+## Data
 
-Small inputs tracked in git are under:
+The included data are under:
 
 ```text
 paper-rf/data/
